@@ -546,15 +546,39 @@ function validarProyectoPublicable(p, imgCount){
   return faltan;
 }
 async function propHistory(propId, usuario, from, to, comentario, motivo){ try { await db.sql`INSERT INTO propiedad_historial (propiedad_id,usuario,estado_anterior,estado_nuevo,comentario,motivo) VALUES (${propId},${usuario||""},${from||""},${to||""},${comentario||""},${motivo||""})`; } catch (e) {} }
-/* Envío de email vía Resend, activo solo si existe la variable RESEND_API_KEY (si no, no hace nada) */
+/* Correo transaccional. Usa Resend si está configurado y, como respaldo,
+   una cuenta activa de Microsoft 365 ya conectada al CRM. Las contraseñas
+   nunca se envían: estos mensajes solo transportan enlaces temporales. */
 async function sendEmail(to, subject, html){
   const key = (typeof process !== "undefined" && process.env) ? process.env.RESEND_API_KEY : null;
-  if (!key || !to || !/@/.test(to)) return false;
+  to = String(to || "").trim().toLowerCase();
+  subject = String(subject || "BRAVA").slice(0, 300);
+  if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return false;
+  if (key) {
+    try {
+      const from = process.env.EMAIL_FROM || "BRAVA <business@bravaae.com>";
+      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" }, body: JSON.stringify({ from, to, subject, html }) });
+      if (r.ok) return true;
+    } catch (e) {}
+  }
+  /* Microsoft Graph: prioriza la cuenta corporativa y después los buzones
+     compartidos. Un fallo de una cuenta permite probar la siguiente. */
   try {
-    const from = process.env.EMAIL_FROM || "BRAVA <business@bravaae.com>";
-    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" }, body: JSON.stringify({ from, to, subject, html }) });
-    return r.ok;
-  } catch (e) { return false; }
+    const accounts = await db.sql`SELECT * FROM mail_accounts
+      WHERE active = TRUE AND encrypted_refresh_token IS NOT NULL
+      ORDER BY CASE WHEN LOWER(email_address) = 'business@bravaae.com' THEN 0 WHEN account_type = 'shared' THEN 1 ELSE 2 END, created_at ASC
+      LIMIT 3`;
+    for (const account of accounts) {
+      try {
+        const accessToken = await mailAccessToken(account);
+        const provider = mailProviderFor(account, accessToken);
+        await provider.sendMessage({ subject, bodyHtml: String(html || ""), to: [to], cc: [], bcc: [], attachments: [] });
+        await mailAudit(account.id, null, "transactional_send", null, { subject: subject.slice(0, 120), recipientDomain: to.split("@")[1] || "" });
+        return true;
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return false;
 }
 /* Diagnóstico seguro de la última llamada a la IA (sin claves ni respuestas sensibles). */
 let LAST_AI_DIAG = null;
@@ -592,7 +616,7 @@ function emailWrap(titulo, cuerpo, cta, ctaUrl){
 async function notify(userId, tipo, titulo, cuerpo, propId){
   if (!userId) return;
   try { await db.sql`INSERT INTO notificaciones (user_id,tipo,titulo,cuerpo,propiedad_id) VALUES (${userId},${tipo},${titulo||""},${cuerpo||""},${propId||null})`; } catch (e) {}
-  try { const [u] = await db.sql`SELECT username,role FROM usuarios WHERE id = ${userId}`; if (u && u.username && /@/.test(u.username)) await sendEmail(u.username, titulo, emailWrap(titulo, cuerpo, "Ir a mi portal", u.role === "inversor" ? "/inversor.html" : "/portal.html")); } catch (e) {}
+  try { const [u] = await db.sql`SELECT username,role FROM usuarios WHERE id = ${userId}`; if (u && u.username && /@/.test(u.username)) await sendEmail(u.username, titulo, emailWrap(safeText(titulo), safeText(cuerpo), "Ir a mi portal", u.role === "inversor" ? "/inversor.html" : "/portal.html")); } catch (e) {}
 }
 function safeText(v){ return String(v == null ? "" : v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function daysUntil(dateText){

@@ -35,3 +35,12 @@ test("el health público es mínimo y no entra al diagnóstico profundo", async 
   const api = await read("netlify/functions/api.mjs");
   assert.match(api, /if \(path === "health"\) return json\(\{ ok: true, service: "brava-api" \}\)/);
 });
+
+test("los correos transaccionales usan enlace temporal y respaldo Microsoft 365", async () => {
+  const api = await read("netlify/functions/api.mjs");
+  assert.match(api, /Restablecer contraseña/);
+  assert.match(api, /El enlace caduca en 1 hora/);
+  assert.match(api, /mailAccessToken\(account\)/);
+  assert.match(api, /provider\.sendMessage/);
+  assert.doesNotMatch(api, /Tu contraseña (?:es|será):/i);
+});

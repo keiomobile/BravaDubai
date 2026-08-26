@@ -44,3 +44,13 @@ test("los correos transaccionales usan enlace temporal y respaldo Microsoft 365"
   assert.match(api, /provider\.sendMessage/);
   assert.doesNotMatch(api, /Tu contraseña (?:es|será):/i);
 });
+
+test("socios e inversores reciben una invitación corporativa previsualizable", async () => {
+  const [api, crm] = await Promise.all([
+    read("netlify/functions/api.mjs"), read("files/crm.html"),
+  ]);
+  assert.match(api, /seg\[0\] === "socios".*seg\[2\] === "acceso"/s);
+  assert.match(api, /portalAccessEmail/);
+  assert.match(crm, /Vista previa del email/);
+  assert.match(crm, /Preparar y enviar acceso/);
+});

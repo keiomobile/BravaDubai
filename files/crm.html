@@ -3001,10 +3001,13 @@ function openAccionista(id){
     +(s.telefono?drow('Teléfono', esc(s.telefono)):'')
     +(s.email?drow('Email', esc(s.email)):'')
     +'<div class="section-title">Aportaciones</div>'+aport
-    +(s.notas?'<div class="section-title">Notas</div><div style="font-size:14px;color:var(--grey);padding:6px 0;white-space:pre-line">'+esc(s.notas)+'</div>':'');
+    +(s.notas?'<div class="section-title">Notas</div><div style="font-size:14px;color:var(--grey);padding:6px 0;white-space:pre-line">'+esc(s.notas)+'</div>':'')
+    +'<div class="section-title">Área privada del socio</div>'
+    +(s.email?'<div style="font-size:12.5px;color:var(--grey2);margin-bottom:9px">Se preparará un acceso seguro para <b>'+esc(s.email)+'</b>. Podrás revisar el email corporativo antes de enviarlo.</div><button type="button" class="btn sm" id="socAccMail">Preparar y enviar acceso</button>':'<div style="font-size:12.5px;color:var(--warn)">Añade un email válido para poder enviarle el acceso.</div>');
   openModal(s.nombre,'Accionista de '+HOLDING.nombre, body,
     [{t:'Editar',cls:'',fn:function(){ openAccionistaForm(s); }}]
     .concat(canDelete(SESSION.role)?[{t:'Eliminar',cls:'del',fn:function(){ confirmDelete('este socio',s.nombre,function(){ deleteEntity('socios',s.id,function(){ toast('Socio eliminado'); closeModal(); go('accionariado'); }); }); }}]:[]));
+  var sm=$('#socAccMail'); if(sm)sm.onclick=function(){ previewPortalAccess('/socios/'+encodeURIComponent(s.id)+'/acceso',s.nombre,function(){openAccionista(s.id);}); };
 }
 function openAccionistaForm(soc){
   var e=soc||{};
@@ -3274,6 +3277,25 @@ function openInv(id){
   bindInvAcceso(i);
 }
 function copiarTexto(txt){ try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); return true; } }catch(e){} try{ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); return true; }catch(e){ return false; } }
+function previewPortalAccess(endpoint,nombre,onReturn,onSent){
+  fetch(API_BASE+endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,data:j};});})
+    .then(function(res){var d=res.data||{};if(!res.ok||!d.ok)throw Error(d.error||'No se pudo preparar el acceso');
+      var body='<div class="role-note" style="margin-bottom:12px">Revisa el destinatario, el asunto y la presentación antes de enviarlo. El botón del correo crea una contraseña mediante un enlace de un solo uso que caduca en 24 horas.</div>'
+        +'<div class="drow"><span class="dk">Para</span><span class="dv">'+esc(d.email)+'</span></div>'
+        +'<div class="drow"><span class="dk">Asunto</span><span class="dv">'+esc(d.subject||'Tu acceso al área privada de BRAVA')+'</span></div>'
+        +'<div class="section-title">Vista previa del email</div><div style="background:#f6f7f8;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:48vh;overflow:auto">'+(d.html||'')+'</div>';
+      openModal('Enviar acceso · '+nombre,'Email corporativo BRAVA',body,[
+        {t:'Cancelar',cls:'ghost',fn:function(){if(onReturn)onReturn();else closeModal();}},
+        {t:'Enviar acceso por email',cls:'',fn:function(){
+          fetch(API_BASE+endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({enviar:true})})
+            .then(function(r){return r.json().then(function(j){return{ok:r.ok,data:j};});})
+            .then(function(rr){var x=rr.data||{};if(!rr.ok||!x.emailEnviado)throw Error(x.error||'Microsoft 365 no confirmó el envío');toast('✓ Acceso enviado por email a '+x.email);if(onSent)onSent(x);if(onReturn)onReturn();else closeModal();})
+            .catch(function(e){toast(e.message||'No se pudo enviar el acceso');});
+        }}
+      ]);
+    }).catch(function(e){toast(e.message||'No se pudo preparar el acceso');});
+}
 function bindInvAcceso(i){
   var portalUrl='https://bravaae.com/inversor.html';
   var sv=$('#invSupportView');if(sv)sv.onclick=function(){
@@ -3296,11 +3318,7 @@ function bindInvAcceso(i){
   };
   var lk=$('#invAccLink'); if(lk)lk.onclick=function(){ copiarTexto(portalUrl); toast('Enlace copiado: '+portalUrl); };
   var ml=$('#invAccMail'); if(ml)ml.onclick=function(){
-    ml.disabled=true; ml.textContent='Enviando…';
-    fetch(API_BASE+'/inversiones/'+i.id+'/acceso',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({enviar:true})})
-      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,data:j}; }); })
-      .then(function(res){ var d=res.data||{}; if(res.ok&&d.emailEnviado){ i.portalUserId=d.userId||i.portalUserId; toast('✓ Acceso enviado por email a '+d.email); } else if(res.ok&&d.emailConfig===false){ toast('Falta configurar el email (RESEND_API_KEY) en Netlify'); } else { toast((d&&d.error)||'No se pudo enviar'); } })
-      .catch(function(){ toast('Error de conexión'); }).finally(function(){ ml.disabled=false; ml.textContent='Enviar acceso por email'; });
+    previewPortalAccess('/inversiones/'+encodeURIComponent(i.id)+'/acceso',i.inversor,function(){openInv(i.id);},function(d){i.portalUserId=d.userId||i.portalUserId;});
   };
 }
 function loadInvDocs(invId){

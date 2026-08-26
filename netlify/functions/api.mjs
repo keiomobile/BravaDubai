@@ -613,6 +613,12 @@ async function anthropicMessages(body){
 function emailWrap(titulo, cuerpo, cta, ctaUrl){
   return '<div style="font-family:Arial,Helvetica,sans-serif;background:#F6F7F8;padding:26px"><div style="max-width:520px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 26px"><div style="font-weight:800;font-size:19px;letter-spacing:.08em;margin-bottom:16px">Brava CAPITAL</div><h1 style="font-size:19px;color:#0E1116;margin:0 0 12px">' + titulo + '</h1><p style="font-size:15px;color:#1B2027;line-height:1.6;margin:0 0 18px">' + (cuerpo || "") + '</p>' + (cta && ctaUrl ? '<a href="' + ctaUrl + '" style="display:inline-block;background:#0E1116;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700;font-size:14px">' + cta + '</a>' : '') + '<p style="font-size:11.5px;color:#9AA1A9;margin-top:24px">BRAVA Global Holding Limited · RAK ICC · Reg. ICC-2025-0508 · Dubai, UAE</p></div></div>';
 }
+function portalAccessEmail(nombre, email, invitationUrl, esSocio){
+  const first = safeText(String(nombre || "").trim().split(/\s+/)[0] || "");
+  const subject = "Tu acceso al área privada de BRAVA";
+  const intro = "Hola" + (first ? " " + first : "") + ",<br><br>Ya tienes disponible tu área privada de BRAVA" + (esSocio ? " como socio" : " como inversor") + ". Desde ella podrás consultar tu posición, contratos, documentos, comunicaciones y contactar directamente con nuestro equipo.<br><br>Por seguridad, utiliza el siguiente enlace de un solo uso para crear tu contraseña. El enlace caduca en 24 horas.<br><br><b>Usuario:</b> " + safeText(email);
+  return { subject, html: emailWrap("Bienvenido a tu área privada", intro, "Activar mi acceso", invitationUrl) };
+}
 async function notify(userId, tipo, titulo, cuerpo, propId){
   if (!userId) return;
   try { await db.sql`INSERT INTO notificaciones (user_id,tipo,titulo,cuerpo,propiedad_id) VALUES (${userId},${tipo},${titulo||""},${cuerpo||""},${propId||null})`; } catch (e) {}
@@ -3652,6 +3658,34 @@ export default async (req) => {
       await db.sql`INSERT INTO support_access_log(actor_id,target_user_id,inversion_id,method,path,detail,ip) VALUES(${user.id},${target.id},${iv.id},'START','/inversor.html',${reason},${ip})`;
       return json({ok:true,url:url.origin+"/inversor.html#support="+token,expiresAt:exp,inversor:target.name});
     }
+    /* Acceso de un socio al área privada. Si también tiene contratos, quedan
+       vinculados por email a la misma cuenta. */
+    if (seg[0] === "socios" && seg[1] && seg[2] === "acceso" && method === "POST" && isInternal) {
+      const b = await req.json().catch(() => ({}));
+      const [socio] = await db.sql`SELECT * FROM socios WHERE id = ${seg[1]}`;
+      if (!socio) return json({ error: "Socio no encontrado" }, 404);
+      const email = String(socio.email || "").trim().toLowerCase();
+      if (!email || !/@/.test(email)) return json({ error: "Este socio no tiene un email válido. Añádelo primero en su ficha." }, 400);
+      const inviteToken = crypto.randomBytes(24).toString("hex");
+      const inviteExpires = new Date(Date.now()+24*60*60*1000).toISOString();
+      const av = (socio.nombre || "?").split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
+      let userId = null;
+      const [ex] = await db.sql`SELECT id FROM usuarios WHERE LOWER(username) = ${email}`;
+      if (ex) {
+        userId = ex.id;
+        await db.sql`UPDATE usuarios SET activo=TRUE, email_verified=TRUE, name=${socio.nombre||""}, reset_token=${inviteToken}, reset_expires=${inviteExpires}, failed_attempts=0, locked_until=NULL WHERE id=${userId}`;
+      } else {
+        const [ins] = await db.sql`INSERT INTO usuarios (username,password_hash,role,name,avatar,email_verified,activo,reset_token,reset_expires) VALUES (${email},${hashPassword(crypto.randomBytes(32).toString("hex"))},'inversor',${socio.nombre||""},${av},TRUE,TRUE,${inviteToken},${inviteExpires}) RETURNING id`;
+        userId = ins && ins.id;
+      }
+      if (userId) { try { await db.sql`UPDATE inversiones SET portal_user_id=${userId} WHERE email<>'' AND LOWER(email)=${email}`; } catch (e) {} }
+      const invitationUrl = url.origin + "/inversor.html#reset=" + inviteToken;
+      const mail = portalAccessEmail(socio.nombre, email, invitationUrl, true);
+      const emailEnviado = b.enviar ? await sendEmail(email, mail.subject, mail.html) : false;
+      if (b.enviar) await mailAudit(null, user.id, emailEnviado ? "portal_access_sent" : "portal_access_failed", null, { entity:"socio", entityId:socio.id, recipientDomain:email.split("@")[1]||"" });
+      return json({ ok:true, email, invitationUrl, userId, emailEnviado, subject:mail.subject, html:mail.html, expiresAt:inviteExpires });
+    }
+
     /* Acceso del inversor al portal (crear/activar/restablecer/enviar) — solo interno */
     if (seg[0] === "inversiones" && seg[1] && seg[2] === "acceso" && method === "POST" && isInternal) {
       const b = await req.json().catch(() => ({}));
@@ -3674,14 +3708,13 @@ export default async (req) => {
       if (userId) { try { await db.sql`UPDATE inversiones SET portal_user_id = ${userId} WHERE id = ${iv.id}`; } catch (e) {} }
       const portalUrl = url.origin + "/inversor.html";
       const invitationUrl = portalUrl + "#reset=" + inviteToken;
+      const mail = portalAccessEmail(iv.inversor, email, invitationUrl, iv.rol_inv === "socio");
       let emailEnviado = false;
       if (b.enviar) {
-        emailEnviado = await sendEmail(email, "Tu acceso al área de inversor de Brava",
-          emailWrap("Tu área privada de inversor",
-            "Hola " + (iv.inversor || "") + ", ya tienes acceso a tu área privada de Brava. Por seguridad, utiliza este enlace de un solo uso para crear tu contraseña. Caduca en 24 horas.<br><br><b>Usuario:</b> " + email,
-            "Crear mi contraseña", invitationUrl));
+        emailEnviado = await sendEmail(email, mail.subject, mail.html);
+        await mailAudit(null, user.id, emailEnviado ? "portal_access_sent" : "portal_access_failed", null, { entity:"inversion", entityId:iv.id, recipientDomain:email.split("@")[1]||"" });
       }
-      return json({ ok: true, email, invitationUrl, url: portalUrl, userId, emailEnviado, emailConfig: !!process.env.RESEND_API_KEY });
+      return json({ ok: true, email, invitationUrl, url: portalUrl, userId, emailEnviado, subject:mail.subject, html:mail.html, expiresAt:inviteExpires });
     }
     /* Documentos del inversor (subir/borrar) — solo interno */
     if (seg[0] === "inversiones" && seg[1] && seg[2] === "documentos" && isInternal) {

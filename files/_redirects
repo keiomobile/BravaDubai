@@ -1,0 +1,5 @@
+/inmueble/:slug  /inmueble.html?slug=:slug  200!
+/propiedades  /propiedades.html  200
+/brava-real-estate  /brava-real-estate.html  200
+/promociones  /promociones.html  200
+/brava-rent  /brava-rent.html  200

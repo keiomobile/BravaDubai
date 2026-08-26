@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /crm.html
+Disallow: /portal.html
+Disallow: /inversor.html
+
+Sitemap: https://bravaae.com/sitemap.xml
+Sitemap: https://bravaae.com/api/sitemap-propiedades.xml

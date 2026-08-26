@@ -1,0 +1,152 @@
+[build]
+  publish = "files"
+  functions = "netlify/functions"
+  # redeploy: 2026-07-16 (idioma Rent/RE + toggle divisa AED/EUR)
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-Frame-Options = "SAMEORIGIN"
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://graph.microsoft.com https://login.microsoftonline.com https://api.anthropic.com https://api.resend.com https://open.er-api.com; upgrade-insecure-requests"
+
+# Todos los dominios de marca secundarios consolidan tráfico y SEO en el
+# dominio principal. Las variantes www quedan cubiertas explícitamente.
+[[redirects]]
+  from = "https://bravaae.net/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.bravaae.net/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://bravaae.info/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.bravaae.info/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://bravaae.co.uk/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.bravaae.co.uk/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://bravaae.es/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.bravaae.es/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://bravaae.store/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.bravaae.store/*"
+  to = "https://bravaae.com/:splat"
+  status = 301
+  force = true
+
+# Portal público de propiedades: /propiedades sirve el listado estático
+[[redirects]]
+  from = "/propiedades"
+  to = "/propiedades.html"
+  status = 200
+
+# Ficha pública dinámica: el cliente lee el slug de la URL y carga los datos
+# publicados desde /api/public/propiedad/:slug.
+[[redirects]]
+  from = "/inmueble/:slug"
+  to = "/inmueble.html?slug=:slug"
+  status = 200
+  force = true
+
+# URLs limpias de las páginas comerciales principales.
+[[redirects]]
+  from = "/brava-real-estate"
+  to = "/brava-real-estate.html"
+  status = 200
+
+[[redirects]]
+  from = "/promociones"
+  to = "/promociones.html"
+  status = 200
+
+[[redirects]]
+  from = "/brava-rent"
+  to = "/brava-rent.html"
+  status = 200
+
+# El HTML (web y CRM) siempre se revalida: cada deploy se ve sin forzar recarga
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Las áreas autenticadas nunca se almacenan en cachés compartidas ni se indexan.
+# Estas reglas específicas van después de la regla HTML general para prevalecer.
+[[headers]]
+  for = "/crm.html"
+  [headers.values]
+    Cache-Control = "private, no-store"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/inversor.html"
+  [headers.values]
+    Cache-Control = "private, no-store"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/portal.html"
+  [headers.values]
+    Cache-Control = "private, no-store"
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+# Cacheo de imágenes y logos (se sirven una vez y quedan en el navegador)
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/seed/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

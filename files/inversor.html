@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Área del inversor · Brava</title>
+<link rel="icon" href="/brand/brava-favicon.png">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700,800&f[]=zodiak@400,500,700&display=swap">
+<style>
+  :root{--bg:#06070a;--panel:#0d0f14;--panel2:#12151c;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);
+    --ink:#f4f5f7;--mut:#9aa1ad;--faint:#5b626e;--green:#18b981;--green-d:#0f8f63;--gold:#c79a4b;--r:16px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"General Sans","Inter",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .serif{font-family:"Zodiak",Georgia,serif}
+  a{color:var(--green)}
+  button{font-family:inherit;cursor:pointer}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#04120c;border:0;border-radius:11px;padding:12px 18px;font-size:14.5px;font-weight:700;transition:.2s}
+  .btn:hover:not(:disabled){background:#1fd196}.btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+  .btn.ghost:hover{background:rgba(255,255,255,.06)}
+  .btn.sm{padding:8px 13px;font-size:13px;border-radius:9px}
+  .btn.block{width:100%}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+  #auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px}
+  #auth.hide{display:none}
+  .auth-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:36px 30px;width:min(430px,100%)}
+  .auth-card .lg{height:30px;margin-bottom:22px}
+  .auth-card h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+  .auth-card .sub{color:var(--mut);font-size:14px;margin-bottom:24px}
+  .field{margin-bottom:15px}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--mut);margin-bottom:7px}
+  .field input,.field select,.field textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:14.5px;font-family:inherit;font-weight:500;color:var(--ink);transition:.15s}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--green);background:#0a0c11}
+  .pass-wrap{position:relative}
+  .pass-wrap button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--mut);padding:8px;font-size:12px}
+  .msg{font-size:13.5px;margin-top:12px;min-height:18px}
+  .msg.err{color:#ff6b6b}.msg.ok{color:var(--green)}
+  #app{display:none;min-height:100vh}
+  #app.show{display:block}
+  .supportbar{display:none;background:#d7a94f;color:#17130b;padding:10px 18px;font-size:13px;font-weight:650;text-align:center}.supportbar.show{display:flex;align-items:center;justify-content:center;gap:14px}.supportbar button{background:#17130b;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-weight:700}
+  .top{position:sticky;top:0;z-index:20;background:rgba(6,7,10,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .top .lg{height:23px}
+  .top .who{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--mut)}
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-d));color:#04120c;display:grid;place-items:center;font-weight:800;font-size:13px}
+  .tabs{position:sticky;top:64px;z-index:19;background:rgba(6,7,10,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);overflow-x:auto}
+  .tabs .wrap{display:flex;gap:4px;height:52px;align-items:center}
+  .tab{background:none;border:0;color:var(--mut);font-size:14px;font-weight:600;padding:8px 14px;border-radius:9px;white-space:nowrap;position:relative;transition:.15s}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--ink)}
+  .tab.on::after{content:"";position:absolute;left:14px;right:14px;bottom:-14px;height:2px;background:var(--green);border-radius:2px}
+  .tab .dot{display:inline-block;min-width:17px;height:17px;line-height:17px;font-size:10px;font-weight:800;background:var(--green);color:#04120c;border-radius:99px;margin-left:6px;padding:0 4px}
+  .page{display:none;padding:28px 0 70px}
+  .page.on{display:block}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--green);font-weight:700}
+  h2.big{font-size:clamp(24px,4vw,34px);font-weight:500;letter-spacing:-.02em;line-height:1.08;margin:12px 0 4px}
+  .lead{color:var(--mut);font-size:15px;max-width:640px}
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:24px 0}
+  .kbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .kbox .k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .kbox .v{font-size:25px;font-weight:800;margin-top:8px;letter-spacing:-.02em}
+  .kbox .v small{font-size:13px;color:var(--mut);font-weight:600}
+  .kbox .d{font-size:12px;color:var(--mut);margin-top:3px}
+  .prog{height:7px;border-radius:100px;background:var(--panel2);overflow:hidden;margin-top:10px}
+  .prog i{display:block;height:100%;background:linear-gradient(90deg,var(--green-d),var(--green));border-radius:100px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:16px}
+  .card-h{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .card-h .t{font-size:18px;font-weight:700;letter-spacing:-.01em}
+  .card-h .p{color:var(--mut);font-size:13.5px;margin-top:3px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:100px}
+  .chip.act{background:rgba(24,185,129,.14);color:var(--green)}
+  .chip.socio{background:rgba(199,154,75,.16);color:var(--gold)}
+  .chip.warn{background:rgba(230,180,80,.16);color:#e6b450}
+  .chip.grey{background:rgba(255,255,255,.08);color:var(--mut)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  .kpi{background:var(--panel);padding:16px 20px}
+  .kpi .k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .kpi .v{font-size:21px;font-weight:700;margin-top:6px;letter-spacing:-.01em}
+  .kpi .v small{font-size:12.5px;color:var(--mut);font-weight:600}
+  .sec{padding:20px 22px;border-bottom:1px solid var(--line)}
+  .sec:last-child{border-bottom:0}
+  .sec h4{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:13px}
+  .rows{display:grid;gap:9px}
+  .r{display:flex;justify-content:space-between;gap:16px;font-size:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .r:last-child{border-bottom:0;padding-bottom:0}
+  .r .rk{color:var(--mut)}.r .rv{text-align:right;font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:700;padding:0 0 10px}
+  td{padding:10px 0;border-top:1px solid var(--line)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .cond{display:grid;gap:11px}
+  .cond .ci{display:flex;gap:11px;align-items:flex-start;font-size:14px}
+  .cond .ci svg{width:17px;height:17px;color:var(--green);flex:none;margin-top:2px}
+  .oppgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+  .opp{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .opp .ph{height:150px;background:#161616 center/cover no-repeat;position:relative}
+  .opp .bd{padding:14px 16px;flex:1;display:flex;flex-direction:column}
+  .opp .bd h5{font-size:16px;font-weight:700}
+  .opp .bd .loc{color:var(--mut);font-size:13px;margin-top:2px}
+  .opp .bd .pr{font-weight:800;margin-top:8px}
+  .opp .bd .btn{margin-top:12px}
+  .ticket{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--panel)}
+  .ticket .th{display:flex;justify-content:space-between;gap:12px;align-items:center}
+  .ticket .rp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);color:var(--mut);font-size:14px}
+  .ticket .rp b{color:var(--green)}
+  .alert{border:1px solid rgba(230,180,80,.35);background:linear-gradient(135deg,rgba(230,180,80,.12),rgba(24,185,129,.05));border-radius:16px;padding:20px 22px;margin:18px 0}
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}.choice{background:var(--panel2);border:1px solid var(--line2);border-radius:13px;padding:16px;color:var(--ink);text-align:left}.choice.on{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}.choice b{display:block;margin-bottom:4px}.choice span{font-size:12.5px;color:var(--mut)}
+  .timeline{border-left:1px solid var(--line2);margin-left:7px;padding-left:18px}.timeline div{position:relative;padding:0 0 16px;font-size:13.5px}.timeline div:before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--green);left:-22.5px;top:6px}
+  .foot{padding:34px 0 60px;color:var(--faint);font-size:12.5px;text-align:center}
+  .foot a{color:var(--mut)}
+  .empty{padding:50px 24px;text-align:center;color:var(--mut)}
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media(max-width:640px){
+    .top .who span{display:none}
+    .wrap{padding:0 15px}
+    .top .wrap{height:58px}
+    .tabs{top:58px}
+    .tabs .wrap{height:48px;gap:2px}
+    .tab{font-size:13px;padding:7px 10px}
+    .tab.on::after{bottom:-13px}
+    h2.big{font-size:25px}
+    .lead{font-size:14px}
+    .kgrid{grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+    .kbox{padding:14px 15px}
+    .kbox .v{font-size:20px}
+    .kpis{grid-template-columns:1fr 1fr}
+    .kpi .v{font-size:18px}
+    .card-h{padding:16px}
+    .sec{padding:16px}
+    .oppgrid{grid-template-columns:1fr 1fr;gap:11px}.choices{grid-template-columns:1fr}
+    .opp .ph{height:120px}
+    .opp .bd h5{font-size:14px}
+    table{font-size:13px}
+    .btn{padding:11px 15px;font-size:14px}
+  }
+  @media(max-width:400px){ .kgrid,.kpis,.oppgrid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="auth">
+  <div class="auth-card">
+    <img class="lg" src="/brand/brava-investment-white.png" alt="Brava">
+    <h1>Área del inversor</h1>
+    <div class="sub">Accede a tu posición: contratos, aportaciones, retorno, oportunidades y solicitudes.</div>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input id="lu" type="email" autocomplete="username" placeholder="tu@email.com" required></div>
+      <div class="field"><label>Contraseña</label><div class="pass-wrap"><input id="lp" type="password" autocomplete="current-password" placeholder="••••••••" required><button type="button" id="eye">Ver</button></div></div>
+      <button class="btn block" type="submit" id="lbtn">Entrar</button>
+      <div class="msg" id="lmsg"></div>
+    </form>
+    <form id="resetForm" style="display:none">
+      <div class="field"><label>Nueva contraseña</label><input id="rp1" type="password" autocomplete="new-password" minlength="8" required></div>
+      <div class="field"><label>Repite la contraseña</label><input id="rp2" type="password" autocomplete="new-password" minlength="8" required></div>
+      <button class="btn block" type="submit" id="rbtn">Crear contraseña</button><div class="msg" id="rmsg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="supportbar" id="supportBar"><span id="supportText">Vista de soporte</span><button id="supportExit">Cerrar acceso</button></div>
+  <header class="top">
+    <div class="wrap">
+      <img class="lg" src="/brand/brava-investment-white.png" alt="Brava">
+      <div class="who">
+        <span id="whoName"></span>
+        <div class="avatar" id="whoAv">?</div>
+        <button class="btn ghost sm" id="logout">Salir</button>
+      </div>
+    </div>
+  </header>
+  <nav class="tabs"><div class="wrap" id="tabbar"></div></nav>
+
+  <div class="wrap">
+    <section class="page" id="pg-resumen"></section>
+    <section class="page" id="pg-comunicaciones"></section>
+    <section class="page" id="pg-contratos"></section>
+    <section class="page" id="pg-decisiones"></section>
+    <section class="page" id="pg-oportunidades"></section>
+    <section class="page" id="pg-solicitudes"></section>
+    <section class="page" id="pg-empresa"></section>
+    <div class="foot">
+      <p>© 2026 BRAVA Global Holding Limited · Dubai, UAE · RAK ICC ICC-2025-0508</p>
+      <p style="margin-top:8px"><a href="#" id="chpass">Cambiar mi contraseña</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+var TOKEN=null, DATA=null, TICKETS=[], COMS=[], NOTIFS=[], SUPPORT_MODE=false, CUR='AED', AEDPER={AED:1,EUR:4.0,USD:3.6725,SAR:1.02,GBP:4.68};
+var RESET_TOKEN=(location.hash.indexOf('#reset=')===0?location.hash.slice(7):'');
+var SUPPORT_TOKEN=(location.hash.indexOf('#support=')===0?location.hash.slice(9):'');
+function $(s,c){return (c||document).querySelector(s);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function fdate(s){ if(!s)return'—'; var p=String(s).slice(0,10).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s; }
+function nf(n){ return Math.round(Number(n)||0).toLocaleString('es-ES'); }
+function money(n,cur){ cur=cur||'AED'; var aed=(Number(n)||0)*(AEDPER[cur]||1); if(CUR==='EUR')return nf(aed/AEDPER.EUR)+' €'; if(CUR==='USD')return nf(aed/AEDPER.USD)+' $'; return nf(aed)+' AED'; }
+function moneyCur(n,cur){ return nf(n)+' '+(cur||'AED'); }
+/* Total en AED y su equivalente en USD, para verlo "en dirhams o dólares" a la vez */
+function dualAEDUSD(aed){ return nf(aed)+' AED · '+nf((Number(aed)||0)/AEDPER.USD)+' $'; }
+function api(path, opts){
+  opts=opts||{}; opts.headers=opts.headers||{};
+  if(TOKEN) opts.headers['Authorization']='Bearer '+TOKEN;
+  if(opts.body && typeof opts.body!=='string'){ opts.headers['Content-Type']='application/json'; opts.body=JSON.stringify(opts.body); }
+  return fetch('/api/'+path,opts).then(function(r){ return r.json().catch(function(){return{};}).then(function(j){ if(!r.ok) throw (j&&j.error)||'Error'; return j; }); });
+}
+$('#eye').onclick=function(){ var i=$('#lp'); i.type=i.type==='password'?'text':'password'; this.textContent=i.type==='password'?'Ver':'Ocultar'; };
+if(RESET_TOKEN){$('#loginForm').style.display='none';$('#resetForm').style.display='block';$('.auth-card h1').textContent='Crea tu contraseña';$('.auth-card .sub').textContent='Elige una contraseña segura de al menos 8 caracteres.';}
+$('#resetForm').addEventListener('submit',function(e){e.preventDefault();var p=$('#rp1').value,m=$('#rmsg'),b=$('#rbtn');if(p!==$('#rp2').value){m.className='msg err';m.textContent='Las contraseñas no coinciden.';return;}b.disabled=true;api('reset-password',{method:'POST',body:{token:RESET_TOKEN,password:p}}).then(function(){location.hash='';RESET_TOKEN='';$('#resetForm').style.display='none';$('#loginForm').style.display='block';$('.auth-card h1').textContent='Área del inversor';$('.auth-card .sub').textContent='Contraseña creada. Ya puedes entrar.';}).catch(function(x){m.className='msg err';m.textContent=String(x);}).finally(function(){b.disabled=false;});});
+$('#loginForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var u=$('#lu').value.trim(), p=$('#lp').value, m=$('#lmsg'), b=$('#lbtn');
+  m.className='msg'; m.textContent=''; b.disabled=true; b.textContent='Entrando…';
+  api('login',{method:'POST',body:{username:u,password:p}}).then(function(res){
+    TOKEN=res.token; SUPPORT_MODE=false; try{sessionStorage.removeItem('brava_support_token');sessionStorage.setItem('brava_inv_token',TOKEN);localStorage.removeItem('brava_inv_token');}catch(e){} boot();
+  }).catch(function(err){ m.className='msg err'; m.textContent=String(err); }).finally(function(){ b.disabled=false; b.textContent='Entrar'; });
+});
+function clearSession(){api('logout',{method:'POST'}).catch(function(){});try{sessionStorage.removeItem('brava_inv_token');localStorage.removeItem('brava_inv_token');sessionStorage.removeItem('brava_support_token');}catch(e){}TOKEN=null;}
+$('#logout').onclick=function(){clearSession();location.reload();};
+$('#supportExit').onclick=function(){clearSession();window.close();setTimeout(function(){location.href='/crm.html';},150);};
+$('#chpass').onclick=function(e){ e.preventDefault(); var a=prompt('Tu contraseña actual:'); if(!a)return; var n=prompt('Nueva contraseña (mínimo 8 caracteres):'); if(!n)return; api('change-password',{method:'POST',body:{actual:a,nueva:n}}).then(function(){ alert('Contraseña actualizada.'); }).catch(function(err){ alert(String(err)); }); };
+
+/* ---- cálculos ---- */
+function monthsBetween(a,b){ if(!a||!b)return 0; var d1=new Date(a),d2=new Date(b); if(isNaN(d1)||isNaN(d2))return 0; return (d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth()); }
+function contractCalc(c){
+  var hoy=new Date().toISOString().slice(0,10);
+  var plazo=c.plazoMeses||monthsBetween(c.fechaInicio,c.fechaFin)||24;
+  var trans=Math.max(0,Math.min(plazo, monthsBetween(c.fechaInicio,hoy)));
+  var pct=plazo?Math.min(100,Math.round(trans/plazo*100)):0;
+  var restM=Math.max(0,plazo-trans);
+  /* La valoración y el retorno se calculan sobre el capital invertido (ticket) del
+     contrato, no sobre lo aportado hasta la fecha, para que todo el portal cuadre
+     con el "Total invertido". */
+  var base=c.capital||c.pagado||0;
+  var retTot=base*(c.rentabilidad||0)/100;
+  var accrued=retTot*(plazo?trans/plazo:0);
+  return { plazo:plazo, transc:trans, pct:pct, restanteMeses:restM, valorActual:base+accrued, accrued:accrued, retornoTotal:retTot, base:base };
+}
+
+/* ---- evolución agregada del valor (mensual) ---- */
+function addMonths(d,n){ var x=new Date(d); x.setMonth(x.getMonth()+n); return x; }
+function computeEvolution(cs){
+  var starts=cs.map(function(c){return c.fechaInicio;}).filter(Boolean).sort();
+  var ends=cs.map(function(c){return c.fechaFin;}).filter(Boolean).sort();
+  if(!starts.length||!ends.length)return null;
+  var start=new Date(starts[0]), end=new Date(ends[ends.length-1]);
+  var total=Math.max(1,(end.getFullYear()-start.getFullYear())*12+(end.getMonth()-start.getMonth()));
+  var step=total>48?Math.ceil(total/48):1;
+  var months=[],aportado=[],valor=[];
+  var hoy=new Date();
+  var todayIdx=0, i=0;
+  for(var m=0;m<=total;m+=step){
+    var d=addMonths(start,m);
+    var ap=0, va=0;
+    cs.forEach(function(c){
+      var cs0=c.fechaInicio?new Date(c.fechaInicio):start;
+      var plazo=c.plazoMeses||24;
+      var elapsed=(d.getFullYear()-cs0.getFullYear())*12+(d.getMonth()-cs0.getMonth());
+      if(elapsed<0)return;
+      var base=(Number(c.capital)||0)*(AEDPER[c.moneda]||1);
+      var ret=base*(c.rentabilidad||0)/100;
+      ap+=base; va+=base+ret*Math.max(0,Math.min(1,elapsed/plazo));
+    });
+    months.push(d); aportado.push(ap); valor.push(va);
+    if(d<=hoy)todayIdx=i;
+    i++;
+  }
+  return { months:months, aportado:aportado, valor:valor, todayIdx:todayIdx };
+}
+function dispAED(aed){ return CUR==='EUR'?(aed/AEDPER.EUR):(CUR==='USD'?(aed/AEDPER.USD):aed); }
+function evolutionChart(ev){
+  if(!ev)return '';
+  var W=680,H=230,pl=8,pr=8,pt=18,pb=24;
+  var n=ev.valor.length; if(n<2)return '';
+  var mx=Math.max.apply(null,ev.valor.concat(ev.aportado)); var mn=0; if(mx===mn)mx=mn+1;
+  var X=function(i){ return pl+(W-pl-pr)*(i/(n-1)); };
+  var Y=function(v){ return pt+(H-pt-pb)*(1-(v-mn)/(mx-mn)); };
+  var ptsV=ev.valor.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ');
+  var ptsA=ev.aportado.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' ');
+  var area='M'+X(0).toFixed(1)+','+Y(0).toFixed(1)+' L'+ev.valor.map(function(v,i){return X(i).toFixed(1)+','+Y(v).toFixed(1);}).join(' L')+' L'+X(n-1).toFixed(1)+','+Y(0).toFixed(1)+' Z';
+  var tx=X(ev.todayIdx), tvalor=ev.valor[ev.todayIdx]||0;
+  var fmtM=function(d){ return ('0'+(d.getMonth()+1)).slice(-2)+'/'+String(d.getFullYear()).slice(2); };
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">'
+    +'<defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18b981" stop-opacity=".35"/><stop offset="1" stop-color="#18b981" stop-opacity="0"/></linearGradient></defs>'
+    +'<path d="'+area+'" fill="url(#ga)"/>'
+    +'<polyline fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5" stroke-dasharray="4 4" points="'+ptsA+'"/>'
+    +'<polyline fill="none" stroke="#18b981" stroke-width="2.5" points="'+ptsV+'"/>'
+    +'<line x1="'+tx.toFixed(1)+'" y1="'+pt+'" x2="'+tx.toFixed(1)+'" y2="'+(H-pb)+'" stroke="var(--gold)" stroke-width="1" stroke-dasharray="3 3"/>'
+    +'<circle cx="'+tx.toFixed(1)+'" cy="'+Y(tvalor).toFixed(1)+'" r="4" fill="var(--gold)"/>'
+    +'<text x="'+pl+'" y="12" fill="var(--mut)" font-size="11">Valor proyectado</text>'
+    +'<text x="'+(W-pr)+'" y="12" text-anchor="end" fill="var(--faint)" font-size="11">--- invertido</text>'
+    +'<text x="'+pl+'" y="'+(H-6)+'" fill="var(--faint)" font-size="10">'+fmtM(ev.months[0])+'</text>'
+    +'<text x="'+tx.toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" fill="var(--gold)" font-size="10">hoy</text>'
+    +'<text x="'+(W-pr)+'" y="'+(H-6)+'" text-anchor="end" fill="var(--faint)" font-size="10">'+fmtM(ev.months[n-1])+'</text>'
+    +'</svg>';
+}
+/* ---- distribución de cartera por proyecto ---- */
+function allocationHtml(cs){
+  if(!cs.length)return '';
+  /* Distribución por capital invertido (ticket) en AED, para que sume el total invertido.
+     Se distingue cada contrato por su unidad (aunque sean del mismo proyecto). */
+  var val=function(c){ return (Number(c.capital)||0)*(AEDPER[c.moneda]||1); };
+  var totalA=cs.reduce(function(s,c){return s+val(c);},0)||1;
+  var cols=['#18b981','#c79a4b','#4b9fc7','#c74b8f','#8f7bd1','#d1a24b'];
+  var rows=cs.map(function(c,i){ var a=val(c); var pct=Math.round(a/totalA*100); var nom=(c.proyecto||'Contrato')+(c.unidad?' · '+c.unidad:''); return { nombre:nom, a:a, pct:pct, col:cols[i%cols.length] }; }).sort(function(a,b){return b.a-a.a;});
+  var bar='<div style="display:flex;height:14px;border-radius:99px;overflow:hidden;margin-bottom:14px">'+rows.map(function(r){return '<div style="width:'+r.pct+'%;background:'+r.col+'"></div>';}).join('')+'</div>';
+  var leg=rows.map(function(r){ return '<div class="r"><span class="rk"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+r.col+';margin-right:8px"></span>'+esc(r.nombre)+'</span><span class="rv">'+money(r.a)+' · '+r.pct+'%</span></div>'; }).join('');
+  return '<div class="card"><div class="sec"><h4>Distribución de tu cartera</h4>'+bar+'<div class="rows">'+leg+'</div></div></div>';
+}
+
+/* ---- tabs ---- */
+var TABS=[{id:'resumen',t:'Resumen'},{id:'decisiones',t:'Vencimientos'},{id:'comunicaciones',t:'Comunicaciones'},{id:'contratos',t:'Mis contratos'},{id:'oportunidades',t:'Oportunidades'},{id:'solicitudes',t:'Contacto'}];
+function comSeen(){ try{ return JSON.parse(localStorage.getItem('brava_com_seen')||'[]'); }catch(e){ return []; } }
+function comUnread(){ var s=comSeen(); return COMS.filter(function(c){ return s.indexOf(c.id)<0; }).length; }
+function markComsSeen(){ try{ localStorage.setItem('brava_com_seen', JSON.stringify(COMS.map(function(c){return c.id;}))); }catch(e){} }
+function buildTabs(){
+  var tabs=TABS.slice(); if(DATA&&DATA.esSocio)tabs.push({id:'empresa',t:'La empresa'});
+  var open=TICKETS.filter(function(t){return t.estado!=='Resuelto';}).length;
+  var unread=comUnread(), pending=(DATA&&DATA.contratos||[]).reduce(function(n,c){return n+(c.hitos||[]).filter(function(h){return h.dias!=null&&h.dias>=0&&h.dias<=30&&!h.decision;}).length;},0);
+  $('#tabbar').innerHTML=tabs.map(function(t){ var badge=(t.id==='solicitudes'&&open)?('<span class="dot">'+open+'</span>'):((t.id==='decisiones'&&pending)?('<span class="dot">'+pending+'</span>'):((t.id==='comunicaciones'&&unread)?('<span class="dot">'+unread+'</span>'):'')); return '<button class="tab" data-tab="'+t.id+'">'+t.t+badge+'</button>'; }).join('')
+    +'<div style="margin-left:auto;display:flex;gap:2px">'+['AED','USD','EUR'].map(function(x){return '<button class="tab curbtn" data-cur="'+x+'"'+(CUR===x?' style="color:var(--green)"':'')+'>'+x+'</button>';}).join('')+'</div>';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'),function(b){ b.onclick=function(){ showTab(b.getAttribute('data-tab')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-cur]'),function(b){ b.onclick=function(){ CUR=b.getAttribute('data-cur'); renderAll(); }; });
+}
+function showTab(id){
+  Array.prototype.forEach.call(document.querySelectorAll('.tab[data-tab]'),function(b){ b.classList.toggle('on',b.getAttribute('data-tab')===id); });
+  Array.prototype.forEach.call(document.querySelectorAll('.page'),function(p){ p.classList.toggle('on',p.id==='pg-'+id); });
+  if(id==='comunicaciones'){ markComsSeen(); buildTabs(); showTabActive(id); }
+  window.scrollTo(0,0);
+}
+function showTabActive(id){ Array.prototype.forEach.call(document.querySelectorAll('.tab[data-tab]'),function(b){ b.classList.toggle('on',b.getAttribute('data-tab')===id); }); }
+
+/* ---- RESUMEN ---- */
+function renderResumen(){
+  var cs=DATA.contratos||[];
+  var totalAportadoAED=cs.reduce(function(s,c){return s+(c.pagadoAED||0);},0);
+  var totalTicketAED=cs.reduce(function(s,c){return s+((c.capital||0)*(AEDPER[c.moneda]||1));},0);
+  var valorActualAED=cs.reduce(function(s,c){var k=contractCalc(c);return s+k.valorActual*(AEDPER[c.moneda]||1);},0);
+  var retornoAED=cs.reduce(function(s,c){var k=contractCalc(c);return s+k.accrued*(AEDPER[c.moneda]||1);},0);
+  var proxVenc=cs.map(function(c){return c.fechaFin;}).filter(Boolean).sort()[0];
+  var nm=(DATA.inversor&&DATA.inversor.nombre)||'';
+  var hero='<div class="eyebrow">Club privado de co-inversión</div><h2 class="big serif">Hola, '+esc(nm.split(' ')[0]||'inversor')+'.</h2><p class="lead">Esta es tu posición con BRAVA Global Holding Limited: lo que has aportado, cómo evoluciona y qué te queda por delante.</p>';
+  var kpis='<div class="kgrid">'
+    +'<div class="kbox"><div class="k">Total invertido</div><div class="v">'+money(totalTicketAED)+'</div><div class="d">'+dualAEDUSD(totalTicketAED)+' · '+cs.length+' contrato'+(cs.length===1?'':'s')+'</div></div>'
+    +'<div class="kbox"><div class="k">Capital aportado</div><div class="v">'+money(totalAportadoAED)+'</div><div class="d">'+dualAEDUSD(totalAportadoAED)+'</div></div>'
+    +'<div class="kbox"><div class="k">Valor actual estimado</div><div class="v" style="color:var(--green)">'+money(valorActualAED)+'</div><div class="d">+'+money(retornoAED)+' de retorno acumulado</div></div>'
+    +'<div class="kbox"><div class="k">Retorno proyectado</div><div class="v">'+money(cs.reduce(function(s,c){return s+contractCalc(c).retornoTotal*(AEDPER[c.moneda]||1);},0))+'</div><div class="d">a vencimiento</div></div>'
+    +'<div class="kbox"><div class="k">Próximo vencimiento</div><div class="v">'+(proxVenc?fdate(proxVenc):'—')+'</div><div class="d">'+(proxVenc?('faltan '+Math.max(0,monthsBetween(new Date().toISOString().slice(0,10),proxVenc))+' meses'):'')+'</div></div>'
+    +'</div>';
+  var mini=cs.map(function(c){ var k=contractCalc(c); return '<div class="card"><div class="sec"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px"><b>'+esc((c.proyecto||'Contrato')+(c.unidad?' · '+c.unidad:''))+'</b><span class="chip '+(c.rolInv==='socio'?'socio':'act')+'">'+(c.rolInv==='socio'?'Socio fundador':'Activo')+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin-bottom:8px"><span>'+money(c.capital,c.moneda)+' invertido</span><span>'+k.restanteMeses+' meses restantes · +'+(c.rentabilidad||0)+'%</span></div>'
+    +'<div class="prog"><i style="width:'+k.pct+'%"></i></div></div></div>'; }).join('');
+  var ev=computeEvolution(cs);
+  var chart=ev?('<div class="card"><div class="sec"><h4>Evolución del valor de tu inversión</h4>'+evolutionChart(ev)+'<div style="font-size:12.5px;color:var(--mut);margin-top:6px">Proyección del valor según el retorno pactado y el tiempo transcurrido. La línea dorada marca hoy.</div></div></div>'):'';
+  var due=cs.reduce(function(a,c){return a.concat((c.hitos||[]).filter(function(h){return h.dias!=null&&h.dias>=0&&h.dias<=30&&!h.decision;}));},[]);
+  var dueAlert=due.length?'<div class="alert"><span class="chip warn">Acción necesaria</span><h3 style="margin:10px 0 4px">Tienes '+due.length+' decisión'+(due.length===1?'':'es')+' próxima'+(due.length===1?'':'s')+'</h3><p style="color:var(--mut);margin-bottom:12px">Al primer año puedes liquidar con un retorno del 10% o continuar hasta el segundo año para alcanzar el 20% pactado.</p><button class="btn sm" data-go-dec>Tomar una decisión</button></div>':'';
+  $('#pg-resumen').innerHTML='<div style="padding:22px 0 6px">'+hero+'</div>'+dueAlert+kpis
+    +(cs.length?(chart+allocationHtml(cs)+'<h4 style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:6px 0 12px">Tus contratos</h4>'+mini):'<div class="card"><div class="empty">Aún no hay contratos vinculados a tu cuenta.</div></div>');
+  var gd=$('[data-go-dec]');if(gd)gd.onclick=function(){showTab('decisiones');};
+}
+
+/* ---- CONTRATOS ---- */
+function row(k,v){ return '<div class="r"><span class="rk">'+k+'</span><span class="rv">'+v+'</span></div>'; }
+function docIcon(){ return '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'; }
+function docsSection(c){
+  var docs=c.documentos||[];
+  if(!docs.length)return '<div class="sec"><h4>Documentos</h4><div style="color:var(--faint);font-size:13.5px">Aún no hay documentos. Puedes solicitarlos con el botón de abajo.</div></div>';
+  return '<div class="sec"><h4>Documentos</h4><div style="display:grid;gap:8px">'+docs.map(function(d){ return '<button class="choice" data-doc="'+esc(d.url)+'" data-name="'+esc(d.nombre)+'" style="display:flex;align-items:center;gap:10px;width:100%">'+docIcon()+'<span style="flex:1"><b style="font-weight:600">'+esc(d.nombre)+'</b><span style="display:block;font-size:12px;color:var(--faint)">'+esc(d.categoria||'Documento')+'</span></span><span style="color:var(--green);font-size:13px;font-weight:700">Abrir</span></button>'; }).join('')+'</div></div>';
+}
+function openPrivateDoc(path,name){ fetch(path,{headers:{Authorization:'Bearer '+TOKEN}}).then(function(r){if(!r.ok)throw Error('No se pudo abrir el documento');return r.blob();}).then(function(b){var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';a.click();setTimeout(function(){URL.revokeObjectURL(u);},60000);}).catch(function(e){alert(e.message);}); }
+function condIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>'; }
+function renderContract(c){
+  var k=contractCalc(c);
+  var isSocio=c.rolInv==='socio', cond=c.condiciones||{};
+  var condHtml=''; ['coInversionBrava','comisionGestion','retorno','naturaleza','jurisdiccion','contraparte'].forEach(function(x){ if(cond[x])condHtml+='<div class="ci">'+condIcon()+'<span>'+esc(cond[x])+'</span></div>'; });
+  var pagosHtml=(c.pagos&&c.pagos.length)?c.pagos.map(function(p){ return '<tr><td>'+fdate(p.fecha)+'</td><td>'+esc(p.concepto||'Aportación')+'</td><td class="num">'+moneyCur(p.importe,p.moneda||c.moneda)+'</td></tr>'; }).join(''):'<tr><td colspan="3" style="color:var(--mut)">Sin aportaciones registradas.</td></tr>';
+  var devs=c.devoluciones||[];
+  var devHtml=devs.length?('<div class="sec"><h4>Devolución de la inversión</h4><table><tbody>'+devs.map(function(d){return '<tr><td>'+fdate(d.fecha)+' · '+esc(d.tipo||'Devolución')+'</td><td class="num">'+moneyCur((Number(d.capital)||0)+(Number(d.intereses)||0),d.moneda||c.moneda)+'</td></tr>';}).join('')+'</tbody></table></div>'):'';
+  return '<div class="card">'
+    +'<div class="card-h"><div><div class="t">'+esc(c.proyecto||'Contrato de co-inversión')+'</div><div class="p">'+esc(c.inversor)+(c.unidad?' · Unidad '+esc(c.unidad):'')+'</div></div><span class="chip '+(isSocio?'socio':'act')+'">'+(isSocio?'Socio fundador':'Co-inversor activo')+'</span></div>'
+    +'<div class="kpis">'
+      +'<div class="kpi"><div class="k">Ticket</div><div class="v">'+money(c.capital,c.moneda)+'</div><div class="k" style="margin-top:2px">'+moneyCur(c.capital,c.moneda)+'</div></div>'
+      +'<div class="kpi"><div class="k">Aportado</div><div class="v">'+money(c.pagado,c.moneda)+'</div><div class="prog"><i style="width:'+(c.capital?Math.min(100,Math.round(c.pagado/c.capital*100)):0)+'%"></i></div></div>'
+      +'<div class="kpi"><div class="k">Valor actual estimado</div><div class="v" style="color:var(--green)">'+money(k.valorActual,c.moneda)+'</div><div class="k" style="margin-top:2px">+'+money(k.accrued,c.moneda)+'</div></div>'
+      +'<div class="kpi"><div class="k">Tiempo</div><div class="v">'+k.restanteMeses+'m <small>restan</small></div><div class="prog"><i style="width:'+k.pct+'%"></i></div></div>'
+    +'</div>'
+    +'<div class="sec"><h4>Contrato</h4><div class="rows">'
+      +row('Modalidad',esc(c.modalidad||'Coinversión'))+row('Retorno pactado','+'+(c.rentabilidad||0)+'% a '+(k.plazo)+' meses')
+      +row('Firma',fdate(c.fechaInicio))+row('Vencimiento previsto',fdate(c.fechaFin))+(c.envelope?row('Referencia',esc(c.envelope)):'')
+    +'</div></div>'
+    +(condHtml?'<div class="sec"><h4>Condiciones pactadas</h4><div class="cond">'+condHtml+'</div></div>':'')
+    +'<div class="sec"><h4>Aportaciones</h4><table><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Importe</th></tr></thead><tbody>'+pagosHtml+'</tbody></table></div>'
+    +devHtml
+    +docsSection(c)
+    +'<div class="sec"><button class="btn ghost sm" data-ask="'+esc(c.proyecto||'')+'">Solicitar información de este contrato</button></div>'
+  +'</div>';
+}
+function renderContratos(){
+  var cs=DATA.contratos||[];
+  $('#pg-contratos').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Histórico contractual</div><h2 class="big serif">Mis contratos</h2></div>'
+    +(cs.length?cs.map(renderContract).join(''):'<div class="card"><div class="empty">Aún no hay contratos vinculados a tu cuenta.</div></div>');
+  Array.prototype.forEach.call(document.querySelectorAll('#pg-contratos [data-ask]'),function(b){ b.onclick=function(){ openTicket('info','Información sobre '+b.getAttribute('data-ask'), b.getAttribute('data-ask')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('#pg-contratos [data-doc]'),function(b){ b.onclick=function(){openPrivateDoc(b.getAttribute('data-doc'),b.getAttribute('data-name'));}; });
+}
+
+/* ---- VENCIMIENTOS Y DECISIONES ---- */
+function renderDecisiones(){
+  var cs=(DATA.contratos||[]).slice().sort(function(a,b){return String(a.fechaFin||'9999').localeCompare(String(b.fechaFin||'9999'));});
+  var cards=cs.map(function(c){return (c.hitos||[]).map(function(h){var d=h.decision,days=h.dias,urgent=days!=null&&days>=0&&days<=30&&!d,annual=h.hito==='primer_aniversario',key=c.id+'-'+h.hito;
+    var head='<div class="card-h"><div><div class="t">'+esc(c.proyecto||'Contrato')+' · '+esc(h.titulo)+'</div><div class="p">'+fdate(h.fecha)+(days!=null?' · '+(days>=0?'faltan '+days+' días':'fecha superada'):'')+' · retorno aplicable '+h.retorno+'%</div></div><span class="chip '+(urgent?'warn':(d?'act':'grey'))+'">'+(d?esc(d.estado):(urgent?'Decisión pendiente':'En seguimiento'))+'</span></div>';
+    if(d){var tl=(h.timeline||[]).map(function(e){return '<div><b>'+esc(e.tipo)+'</b><br><span style="color:var(--mut)">'+fdate(e.created_at)+' · '+esc(e.detalle||'')+'</span></div>';}).join('');return '<div class="card">'+head+'<div class="sec"><div class="rows">'+row('Decisión',d.decision==='liquidar'?'Liquidar con retorno del '+h.retorno+'%':(d.decision==='propuesta'?'Recibir propuesta':'Continuar inversión'))+row('Aceptada por',esc(d.firmante||'—'))+row('Fecha',fdate(d.firma_at))+(d.importe_final!=null?row('Importe final',moneyCur(d.importe_final,d.moneda)):'')+(d.fecha_pago?row('Fecha de pago',fdate(d.fecha_pago)):'')+'</div>'+(d.propuesta?'<div class="alert"><b>Información de Brava</b><div style="color:var(--mut);margin-top:5px">'+esc(d.propuesta)+'</div></div>':'')+(d.informe?'<div class="alert"><b>Informe final</b><div style="color:var(--mut);margin-top:5px;white-space:pre-line">'+esc(d.informe)+'</div></div>':'')+'<button class="btn ghost sm" data-dec-doc="'+esc(c.id)+'" data-hito="'+esc(h.hito)+'">Ver documento firmado</button></div>'+(tl?'<div class="sec"><h4>Historial</h4><div class="timeline">'+tl+'</div></div>':'')+'</div>';}
+    var can=days!=null&&days<=30;
+    var choices=annual?'<div class="choices" style="grid-template-columns:repeat(2,1fr)"><button class="choice" data-choice="liquidar" data-inv="'+esc(c.id)+'" data-hito="'+h.hito+'"><b>Liquidar al primer año</b><span>Recuperar capital con el retorno pactado del 10%.</span></button><button class="choice" data-choice="continuar" data-inv="'+esc(c.id)+'" data-hito="'+h.hito+'"><b>Continuar hasta dos años</b><span>Mantener la inversión para alcanzar el retorno pactado del 20%.</span></button></div>':'<div class="choices"><button class="choice" data-choice="continuar" data-inv="'+esc(c.id)+'" data-hito="'+h.hito+'"><b>Continuar</b><span>Solicitar una renovación.</span></button><button class="choice" data-choice="propuesta" data-inv="'+esc(c.id)+'" data-hito="'+h.hito+'"><b>Recibir propuesta</b><span>Valorar otra oportunidad.</span></button><button class="choice" data-choice="liquidar" data-inv="'+esc(c.id)+'" data-hito="'+h.hito+'"><b>Liquidar</b><span>Recuperar capital con el retorno pactado del '+h.retorno+'%.</span></button></div>';
+    return '<div class="card">'+head+'<div class="sec">'+(can?'<p style="color:var(--mut)">'+(annual?'El contrato continúa hasta dos años, pero esta cláusula te permite salir al cumplir el primer año con un retorno del 10%.':'Indica qué deseas hacer al vencimiento contractual.')+'</p>'+choices+'<div id="dec-'+esc(key)+'"></div>':'<p style="color:var(--mut)">Las opciones se habilitarán 30 días antes de esta fecha.</p>')+'</div></div>';
+  }).join('');}).join('');
+  $('#pg-decisiones').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Control de contratos</div><h2 class="big serif">Vencimientos y decisiones</h2><p class="lead">Consulta las fechas clave, comunica tu decisión y sigue cada paso hasta el cierre.</p></div>'+(cards||'<div class="card"><div class="empty">No hay contratos vinculados.</div></div>');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-choice]'),function(b){b.onclick=function(){decisionForm(b.getAttribute('data-inv'),b.getAttribute('data-hito'),b.getAttribute('data-choice'));};});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-dec-doc]'),function(b){b.onclick=function(){openPrivateDoc('/api/mi-inversion/'+encodeURIComponent(b.getAttribute('data-dec-doc'))+'/decision-documento?hito='+encodeURIComponent(b.getAttribute('data-hito')),'decision.html');};});
+}
+function decisionForm(id,hito,choice){
+  var key=id+'-'+hito,box=$('#dec-'+key),label=choice==='liquidar'?'solicitar la liquidación':(choice==='propuesta'?'solicitar una propuesta':'continuar con la inversión');
+  box.innerHTML='<div class="alert"><b>Confirmación: '+label+'</b><div class="field" style="margin-top:14px"><label>Nombre completo del firmante</label><input id="df-'+key+'" value="'+esc((DATA.inversor&&DATA.inversor.nombre)||'')+'"></div><div class="field"><label>Comentario opcional</label><textarea id="dc-'+key+'" rows="3" placeholder="Indícanos cualquier condición o consulta"></textarea></div><label style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--mut);margin-bottom:14px"><input id="da-'+key+'" type="checkbox" style="margin-top:4px"> Confirmo que he revisado esta decisión y acepto registrarla electrónicamente. Entiendo que Brava debe revisar y formalizar las condiciones definitivas.</label><button class="btn" id="ds-'+key+'">Firmar y enviar</button><div class="msg" id="dm-'+key+'"></div></div>';
+  $('#ds-'+key).onclick=function(){var m=$('#dm-'+key);api('mi-inversion/'+encodeURIComponent(id)+'/decision',{method:'POST',body:{hito:hito,decision:choice,firmante:$('#df-'+key).value,comentario:$('#dc-'+key).value,aceptacion:$('#da-'+key).checked}}).then(function(){m.className='msg ok';m.textContent='✓ Decisión registrada.';return boot();}).catch(function(e){m.className='msg err';m.textContent=String(e);});};
+}
+
+/* ---- OPORTUNIDADES ---- */
+function renderOportunidades(){
+  var ops=DATA.oportunidades||[];
+  var head='<div style="padding:22px 0 6px"><div class="eyebrow">Nuevas oportunidades</div><h2 class="big serif">Invierte en más activos</h2><p class="lead">Proyectos disponibles para co-invertir con Brava. ¿Te interesa alguno? Solicítalo y te preparamos la propuesta.</p></div>';
+  var grid=ops.length?('<div class="oppgrid">'+ops.map(function(o){ var ph=o.portada?('background-image:url('+JSON.stringify(o.portada)+')'):''; var obra=(o.obraPct?('<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut)"><span>Obra'+(o.obraFase?' · '+esc(o.obraFase):'')+'</span><span>'+o.obraPct+'%</span></div><div class="prog" style="margin-top:4px"><i style="width:'+o.obraPct+'%"></i></div></div>'):''); return '<div class="opp"><div class="ph" style="'+ph+'">'+(o.portada?'':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint)">Brava</div>')+(o.entrega?'<span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px">Entrega '+esc(o.entrega)+'</span>':'')+'</div><div class="bd"><h5>'+esc(o.nombre)+'</h5><div class="loc">'+esc(o.promotorNombre||'')+(o.ubicacion?' · '+esc(o.ubicacion):'')+'</div>'+(o.precioDesde?'<div class="pr">desde '+money(o.precioDesde,o.moneda)+'</div>':'')+obra+'<div style="flex:1"></div><button class="btn sm block" data-opp="'+esc(o.nombre)+'" style="margin-top:12px">Me interesa</button></div></div>'; }).join('')+'</div>'):'<div class="card"><div class="empty">Pronto publicaremos nuevas oportunidades aquí.</div></div>';
+  $('#pg-oportunidades').innerHTML=head+grid;
+  Array.prototype.forEach.call(document.querySelectorAll('#pg-oportunidades [data-opp]'),function(b){ b.onclick=function(){ openTicket('nueva_inversion','Interés en '+b.getAttribute('data-opp'), b.getAttribute('data-opp')); }; });
+}
+
+/* ---- SOLICITUDES (tickets) ---- */
+function tipoLabel(t){ return {info:'Información',nueva_inversion:'Nueva inversión',documentos:'Documentos',otro:'Otro'}[t]||'Solicitud'; }
+function renderSolicitudes(){
+  var form='<div class="card"><div class="sec"><h4>Nueva solicitud</h4>'
+    +'<div class="field"><label>Tipo</label><select id="tkTipo"><option value="info">Información</option><option value="nueva_inversion">Quiero invertir en un nuevo activo</option><option value="documentos">Documentos / contratos</option><option value="otro">Otro</option></select></div>'
+    +'<div class="field"><label>Asunto</label><input id="tkAsunto" placeholder="¿En qué te ayudamos?"></div>'
+    +'<div class="field"><label>Mensaje</label><textarea id="tkCuerpo" rows="4" placeholder="Cuéntanos…"></textarea></div>'
+    +'<button class="btn" id="tkSend">Enviar solicitud</button><div class="msg" id="tkMsg"></div></div></div>';
+  var list=TICKETS.length?TICKETS.map(function(t){ var est=t.estado==='Resuelto'?'act':(t.estado==='En curso'?'warn':'grey'); return '<div class="ticket"><div class="th"><div><b>'+esc(t.asunto||tipoLabel(t.tipo))+'</b><div style="font-size:12.5px;color:var(--mut);margin-top:2px">'+tipoLabel(t.tipo)+' · '+fdate(t.fecha)+'</div></div><span class="chip '+est+'">'+esc(t.estado)+'</span></div>'+(t.cuerpo?'<div style="font-size:14px;color:var(--mut);margin-top:8px">'+esc(t.cuerpo)+'</div>':'')+(t.respuesta?'<div class="rp"><b>Respuesta de Brava:</b> '+esc(t.respuesta)+'</div>':'')+'</div>'; }).join(''):'<div class="card"><div class="empty">No tienes solicitudes todavía.</div></div>';
+  $('#pg-solicitudes').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Atención al inversor</div><h2 class="big serif">Solicitudes</h2></div>'+form+'<h4 style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:20px 0 12px">Tus solicitudes</h4>'+list;
+  $('#tkSend').onclick=sendTicket;
+}
+function openTicket(tipo,asunto,ref){ showTab('solicitudes'); setTimeout(function(){ var ts=$('#tkTipo'); if(ts)ts.value=tipo; var a=$('#tkAsunto'); if(a){a.value=asunto||'';} var c=$('#tkCuerpo'); if(c)c.focus(); window._tkref=ref||''; },60); }
+function sendTicket(){
+  var tipo=$('#tkTipo').value, asunto=$('#tkAsunto').value.trim(), cuerpo=$('#tkCuerpo').value.trim(), m=$('#tkMsg'), b=$('#tkSend');
+  if(!asunto&&!cuerpo){ m.className='msg err'; m.textContent='Escribe tu solicitud.'; return; }
+  m.className='msg'; m.textContent=''; b.disabled=true; b.textContent='Enviando…';
+  api('mi-ticket',{method:'POST',body:{tipo:tipo,asunto:asunto,cuerpo:cuerpo,ref:window._tkref||''}}).then(function(){
+    m.className='msg ok'; m.textContent='✓ Solicitud enviada. Te responderemos pronto.';
+    return api('mis-tickets').then(function(r){ TICKETS=r.tickets||[]; buildTabs(); showTab('solicitudes'); renderSolicitudes(); var mm=$('#tkMsg'); if(mm){mm.className='msg ok';mm.textContent='✓ Solicitud enviada. Te responderemos pronto.';} });
+  }).catch(function(err){ m.className='msg err'; m.textContent=String(err); }).finally(function(){ var bb=$('#tkSend'); if(bb){bb.disabled=false;bb.textContent='Enviar solicitud';} });
+}
+
+/* ---- COMUNICACIONES ---- */
+function comTipoColor(t){ return {Novedad:'act',Resultados:'act',Aviso:'warn',Documento:'grey'}[t]||'grey'; }
+function renderComunicaciones(){
+  var head='<div style="padding:22px 0 6px"><div class="eyebrow">Comunicaciones de Brava</div><h2 class="big serif">Novedades</h2><p class="lead">Actualizaciones, resultados y avisos de tu club de co-inversión.</p></div>';
+  var alerts=NOTIFS.length?'<h4 style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin:15px 0 10px">Notificaciones</h4>'+NOTIFS.map(function(n){return '<div class="ticket"><div class="th"><b>'+esc(n.titulo||'Aviso')+'</b><span style="font-size:12px;color:var(--faint)">'+fdate(n.created_at)+'</span></div><div style="color:var(--mut);font-size:14px;margin-top:6px">'+esc(n.cuerpo||'')+'</div></div>';}).join(''):'';
+  var feed=COMS.length?COMS.map(function(c){ return '<div class="card"><div class="sec"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px"><span class="chip '+comTipoColor(c.tipo)+'">'+esc(c.tipo||'Novedad')+'</span><span style="font-size:12.5px;color:var(--faint)">'+(c.fecha?fdate(c.fecha):'')+'</span></div><div style="font-size:19px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px">'+esc(c.titulo||'')+'</div>'+(c.proyecto?'<div style="font-size:12.5px;color:var(--green);margin-bottom:8px">'+esc(c.proyecto)+'</div>':'')+'<div style="font-size:14.5px;color:var(--mut);white-space:pre-line;line-height:1.6">'+esc(c.cuerpo||'')+'</div></div></div>'; }).join(''):'<div class="card"><div class="empty">Aún no hay comunicaciones. Aquí verás las novedades de Brava.</div></div>';
+  $('#pg-comunicaciones').innerHTML=head+alerts+'<h4 style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin:22px 0 10px">Actualizaciones</h4>'+feed;
+}
+
+/* ---- EMPRESA (socios) ---- */
+function renderEmpresa(){
+  if(!DATA.esSocio){ $('#pg-empresa').innerHTML=''; return; }
+  var e=DATA.empresa; if(!e){ $('#pg-empresa').innerHTML='<div class="card"><div class="empty">Cargando datos de la empresa…</div></div>'; return; }
+  var k=e.kpis||{};
+  var kpis='<div class="kgrid">'
+    +'<div class="kbox"><div class="k">Capital co-invertido</div><div class="v">'+money(k.totalCoinvertidoAED)+'</div><div class="d">de todos los inversores</div></div>'
+    +'<div class="kbox"><div class="k">Co-inversores</div><div class="v">'+(k.coinversores||0)+'</div><div class="d">'+(k.contratos||0)+' contratos</div></div>'
+    +'<div class="kbox"><div class="k">Capital desplegado</div><div class="v">'+money(k.capitalDesplegadoAED)+'</div><div class="d">pagado en operaciones</div></div>'
+    +'<div class="kbox"><div class="k">Operaciones activas</div><div class="v">'+(k.operacionesActivas||0)+'</div><div class="d">en curso</div></div>'
+    +'</div>';
+  var cap=(e.capTable||[]);
+  var capHtml='<div class="card"><div class="card-h"><div class="t">Accionariado · '+esc(e.holding||'')+'</div><div class="p">'+nf(e.totalAcciones)+' acciones</div></div><div class="sec"><table><thead><tr><th>Socio</th><th>Rol</th><th class="num">Acciones</th><th class="num">%</th></tr></thead><tbody>'
+    +cap.map(function(s){ return '<tr><td>'+esc(s.nombre)+(s.estado==='saliente'?' <span class="chip grey">saliente</span>':'')+'</td><td style="color:var(--mut)">'+esc(s.rol||'')+'</td><td class="num">'+nf(s.acciones)+'</td><td class="num">'+s.pct+'%</td></tr>'; }).join('')
+    +'</tbody></table></div></div>';
+  var flujo=(e.contratos||[]);
+  var flujoHtml='<div class="card"><div class="card-h"><div class="t">Contratos de co-inversión</div><div class="p">'+flujo.length+' registrados</div></div><div class="sec"><table><thead><tr><th>Inversor</th><th>Proyecto</th><th class="num">Ticket</th><th>Estado</th></tr></thead><tbody>'
+    +(flujo.length?flujo.map(function(c){ return '<tr><td>'+esc(c.inversor)+(c.rolInv==='socio'?' <span class="chip socio">socio</span>':'')+'</td><td style="color:var(--mut)">'+esc(c.proyecto||'—')+'</td><td class="num">'+money(c.capital,c.moneda)+'</td><td><span class="chip '+(c.estado==='Activa'?'act':'grey')+'">'+esc(c.estado)+'</span></td></tr>'; }).join(''):'<tr><td colspan="4" style="color:var(--mut)">Sin contratos.</td></tr>')
+    +'</tbody></table></div></div>';
+  $('#pg-empresa').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Socio fundador</div><h2 class="big serif">La empresa</h2><p class="lead">Visión de conjunto de BRAVA como accionista: capital captado, despliegue y flujo de contratos.</p></div>'+kpis+capHtml+flujoHtml;
+}
+
+function renderAll(){ buildTabs(); renderResumen(); renderDecisiones(); renderComunicaciones(); renderContratos(); renderOportunidades(); renderSolicitudes(); renderEmpresa();
+  var cur=document.querySelector('.tab.on'); if(!cur)showTab('resumen'); else{ Array.prototype.forEach.call(document.querySelectorAll('[data-cur]'),function(b){ b.style.color=(b.getAttribute('data-cur')===CUR)?'var(--green)':''; }); } }
+
+function boot(){
+  return api('mi-inversion').then(function(res){
+    DATA=res; AEDPER=res.aedPer||AEDPER;
+    $('#auth').classList.add('hide'); $('#app').classList.add('show');
+    SUPPORT_MODE=!!res.support;if(SUPPORT_MODE){$('#supportBar').classList.add('show');$('#supportText').textContent='Vista de soporte · '+(res.support.actor||'Equipo Brava')+' está actuando como este inversor · el acceso caduca en 30 minutos';$('#chpass').style.display='none';}
+    var nm=(res.inversor&&res.inversor.nombre)||'';
+    $('#whoName').textContent=nm;
+    $('#whoAv').textContent=(nm||'?').split(' ').map(function(x){return x[0];}).join('').slice(0,2).toUpperCase();
+    return Promise.all([
+      api('mis-tickets').then(function(r){ TICKETS=r.tickets||[]; }).catch(function(){ TICKETS=[]; }),
+      api('mis-comunicaciones').then(function(r){ COMS=r.comunicaciones||[]; }).catch(function(){ COMS=[]; }),
+      api('notificaciones').then(function(r){ NOTIFS=r.notificaciones||[]; }).catch(function(){ NOTIFS=[]; })
+    ]).then(function(){ renderAll(); showTab('resumen'); });
+  }).catch(function(){ try{sessionStorage.removeItem('brava_inv_token');localStorage.removeItem('brava_inv_token');}catch(e){} TOKEN=null; $('#auth').classList.remove('hide'); $('#app').classList.remove('show'); });
+}
+(function(){ try{if(SUPPORT_TOKEN){TOKEN=SUPPORT_TOKEN;SUPPORT_MODE=true;sessionStorage.setItem('brava_support_token',TOKEN);history.replaceState(null,'',location.pathname+location.search);}else{TOKEN=sessionStorage.getItem('brava_support_token')||sessionStorage.getItem('brava_inv_token');SUPPORT_MODE=!!sessionStorage.getItem('brava_support_token');localStorage.removeItem('brava_inv_token');}}catch(e){} if(TOKEN) boot(); })();
+</script>
+</body>
+</html>

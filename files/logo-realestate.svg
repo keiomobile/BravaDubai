@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 56" role="img" aria-label="Brava Real Estate">
+  <rect x="2" y="7" width="42" height="42" rx="12" fill="#0E1B2C"/>
+  <path d="M12 27l11-9 11 9" fill="none" stroke="#C79A4B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15 25.5v11h16v-11" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="20.5" y="30" width="5" height="6.5" rx="1" fill="#C79A4B"/>
+  <text x="57" y="24" font-family="'General Sans',Inter,'Segoe UI',Arial,sans-serif" font-size="12.5" font-weight="700" letter-spacing="3" fill="#1F5F8B">BRAVA</text>
+  <text x="56" y="46" font-family="'General Sans',Inter,'Segoe UI',Arial,sans-serif" font-size="25" font-weight="800" letter-spacing="-0.4" fill="#0E1B2C">Real Estate</text>
+</svg>

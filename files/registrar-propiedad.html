@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Registra tu propiedad · Brava Dubai</title>
+<meta name="description" content="Cuéntanos los datos de tu propiedad y sube fotos. El equipo de Brava Dubai revisará tu inmueble y te contactará." />
+<link rel="icon" href="/brand/brava-favicon.png" type="image/svg+xml" />
+<style>
+  :root{--ink:#0E1116;--ink2:#1B2027;--paper:#F6F7F8;--white:#fff;--grey:#697077;--grey2:#9AA1A9;--line:rgba(14,17,22,.12);--line2:rgba(14,17,22,.07);--pos:#2E7D5B;--pos-bg:#E7F3EC;--neg:#C0392B;--neg-bg:#FBEAE7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:"General Sans","Inter",system-ui,-apple-system,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--ink)}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  header.top{border-bottom:1px solid var(--line2);background:var(--white);position:sticky;top:0;z-index:20}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+  .brand .mk{width:32px;height:32px;border-radius:9px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:-1px}
+  .brand b{font-size:17px;font-weight:700;letter-spacing:-.02em}
+  .back{font-size:14px;color:var(--grey);text-decoration:none;font-weight:600}
+  .back:hover{color:var(--ink)}
+  main{padding:34px 0 70px}
+  .intro{margin-bottom:26px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey);margin-bottom:12px}
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink)}
+  .intro h1{font-size:clamp(26px,5vw,34px);font-weight:800;letter-spacing:-.03em;line-height:1.12;margin-bottom:10px}
+  .intro p{color:var(--ink2);font-size:16px;max-width:560px}
+  .card{background:var(--white);border:1px solid var(--line2);border-radius:18px;padding:22px 22px 24px;margin-bottom:16px}
+  .card > h2{font-size:16px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+  .card > h2 .n{width:24px;height:24px;border-radius:7px;background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .card > .hint{color:var(--grey);font-size:13.5px;margin:2px 0 16px;padding-left:33px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .f{display:flex;flex-direction:column;gap:6px}
+  .f.full{grid-column:1/-1}
+  .f label{font-size:13px;font-weight:600;color:var(--ink2)}
+  .f label .req{color:var(--neg);font-weight:700}
+  .f input,.f select,.f textarea{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:15px;font-family:inherit;font-weight:500;color:var(--ink);transition:.18s;width:100%}
+  .f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--ink);background:#fff}
+  .f textarea{resize:vertical;min-height:88px}
+  .f select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236A7178' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;transition:.16s;user-select:none;display:flex;align-items:center;gap:9px}
+  .chip:hover{border-color:var(--ink)}
+  .chip .tick{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--grey2);display:flex;align-items:center;justify-content:center;flex:none;transition:.16s}
+  .chip .tick svg{width:11px;height:11px;opacity:0;transform:scale(.5);transition:.16s;stroke:#fff}
+  .chip.on{border-color:var(--ink);background:var(--ink);color:#fff}
+  .chip.on .tick{border-color:#fff;background:#fff}
+  .chip.on .tick svg{opacity:1;transform:scale(1);stroke:var(--ink)}
+  .chip.mini{padding:9px 13px;font-size:13px}
+  .chip.mini .tick{width:15px;height:15px}
+  /* uploader */
+  .drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--paper);padding:26px 18px;text-align:center;cursor:pointer;transition:.18s}
+  .drop:hover,.drop.hl{border-color:var(--ink);background:#fff}
+  .drop svg{width:30px;height:30px;color:var(--grey);stroke-width:1.6;margin-bottom:8px}
+  .drop b{display:block;font-size:14.5px;font-weight:600;margin-bottom:3px}
+  .drop span{font-size:13px;color:var(--grey)}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:14px}
+  .thumb{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line2);background:var(--paper)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb button{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:7px;border:0;background:rgba(14,17,22,.72);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+  .thumb button svg{width:13px;height:13px}
+  .cta{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+  .consent{display:flex;gap:11px;align-items:flex-start;font-size:13px;color:var(--ink2)}
+  .consent input{width:19px;height:19px;margin-top:1px;flex:none;accent-color:var(--ink)}
+  .consent a{color:var(--ink)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--ink);color:#fff;border:0;border-radius:13px;padding:16px 22px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:.22s;width:100%}
+  .btn:hover:not(:disabled){background:#000}
+  .btn:disabled{opacity:.55;cursor:default}
+  .btn svg{width:18px;height:18px}
+  .err{background:var(--neg-bg);color:var(--neg);border-radius:11px;padding:12px 15px;font-size:13.5px;font-weight:600;display:none}
+  .err.show{display:block}
+  /* success */
+  .done{display:none;text-align:center;padding:40px 10px}
+  .done.show{display:block}
+  .done .ok{width:74px;height:74px;border-radius:50%;background:var(--pos-bg);color:var(--pos);display:flex;align-items:center;justify-content:center;margin:0 auto 22px}
+  .done .ok svg{width:38px;height:38px;stroke-width:2.4}
+  .done h2{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:10px}
+  .done p{color:var(--ink2);font-size:16px;max-width:440px;margin:0 auto 24px}
+  .done .btn{max-width:280px;margin:0 auto;text-decoration:none}
+  footer.foot{border-top:1px solid var(--line2);background:var(--white);padding:24px 0;color:var(--grey);font-size:13px}
+  .foot .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .foot a{color:var(--grey);margin-right:15px;text-decoration:none}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}.card{padding:18px 16px 20px}}
+</style>
+<link rel="stylesheet" href="/brava-dark.css">
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="brand" href="/"><span class="mk">B.</span><b>Brava Dubai</b></a><a class="back" href="/">← Volver a la web</a></div></header>
+
+<main><div class="wrap">
+  <div class="intro" id="intro">
+    <div class="eyebrow">Registro de propiedad</div>
+    <h1>Cuéntanos sobre tu propiedad</h1>
+    <p>Rellena los datos de tu inmueble y sube algunas fotos. Nuestro equipo lo revisará y te contactará con una propuesta a medida, ya quieras vender, alquilar o que lo gestionemos por ti.</p>
+  </div>
+
+  <form id="form" novalidate>
+    <!-- 1 · Objetivo -->
+    <div class="card">
+      <h2><span class="n">1</span>¿Qué quieres hacer con tu propiedad?</h2>
+      <div class="hint">Elige la opción que mejor encaje. Si dudas, elige la más cercana.</div>
+      <div class="chips" id="objetivo" data-single>
+        <label class="chip" data-val="Vender"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Vender</label>
+        <label class="chip" data-val="Alquiler larga duración"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Alquiler larga duración</label>
+        <label class="chip" data-val="Alquiler de temporada"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Alquiler de temporada</label>
+        <label class="chip" data-val="Alquiler turístico"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Alquiler turístico</label>
+        <label class="chip" data-val="Que lo gestionéis vosotros"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Que lo gestionéis vosotros</label>
+        <label class="chip" data-val="Solo una valoración"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Solo una valoración</label>
+        <label class="chip" data-val="Otro"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Otro</label>
+      </div>
+    </div>
+
+    <!-- 2 · La propiedad -->
+    <div class="card">
+      <h2><span class="n">2</span>Datos de la propiedad</h2>
+      <div class="hint">Cuantos más datos, mejor podremos valorarla.</div>
+      <div class="grid">
+        <div class="f full"><label>Dirección del inmueble <span class="req">*</span></label><input id="direccion" placeholder="Calle, número, piso…" autocomplete="street-address"></div>
+        <div class="f"><label>Población / zona</label><input id="poblacion" placeholder="Valencia, Ruzafa…"></div>
+        <div class="f"><label>Tipo de inmueble</label>
+          <select id="tipo">
+            <option value="">Selecciona…</option>
+            <option>Piso</option><option>Ático</option><option>Dúplex</option><option>Estudio</option>
+            <option>Casa / Chalet</option><option>Adosado</option><option>Local comercial</option>
+            <option>Garaje</option><option>Terreno</option><option>Edificio</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="f"><label>Superficie (m²)</label><input id="metros" type="number" inputmode="numeric" placeholder="Ej. 85"></div>
+        <div class="f"><label>Habitaciones</label><input id="habitaciones" type="number" inputmode="numeric" placeholder="Ej. 3"></div>
+        <div class="f"><label>Baños</label><input id="banos" type="number" inputmode="numeric" placeholder="Ej. 2"></div>
+        <div class="f"><label>Planta</label><input id="planta" placeholder="Ej. 4º · Bajo · Ático"></div>
+        <div class="f"><label>Año de construcción</label><input id="anio" type="number" inputmode="numeric" placeholder="Ej. 1998"></div>
+        <div class="f"><label>Estado del inmueble</label>
+          <select id="estado">
+            <option value="">Selecciona…</option>
+            <option>A estrenar</option><option>Buen estado</option><option>Para actualizar</option><option>A reformar</option>
+          </select>
+        </div>
+        <div class="f full"><label>Situación actual</label>
+          <select id="situacion">
+            <option value="">Selecciona…</option>
+            <option>Libre / disponible</option><option>Con inquilino</option><option>Herencia</option>
+            <option>Proindiviso</option><option>Con cargas o embargo</option><option>Nuda propiedad</option><option>Otra</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--ink2);display:block;margin-bottom:9px">Extras (opcional)</label>
+        <div class="chips" id="extras">
+          <label class="chip mini" data-val="Ascensor"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Ascensor</label>
+          <label class="chip mini" data-val="Garaje"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Garaje</label>
+          <label class="chip mini" data-val="Trastero"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Trastero</label>
+          <label class="chip mini" data-val="Terraza"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Terraza</label>
+          <label class="chip mini" data-val="Balcón"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Balcón</label>
+          <label class="chip mini" data-val="Piscina"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Piscina</label>
+          <label class="chip mini" data-val="Aire acondicionado"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Aire acondicionado</label>
+          <label class="chip mini" data-val="Amueblado"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>Amueblado</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · Precio -->
+    <div class="card">
+      <h2><span class="n">3</span>Precio que te gustaría</h2>
+      <div class="hint">Es orientativo. Si no lo tienes claro, déjalo en blanco y te asesoramos.</div>
+      <div class="grid">
+        <div class="f full"><label id="precioLbl">Precio de venta deseado (€)</label><input id="precio" type="number" inputmode="numeric" placeholder="Ej. 180000"></div>
+      </div>
+    </div>
+
+    <!-- 4 · Fotos -->
+    <div class="card">
+      <h2><span class="n">4</span>Fotos del inmueble</h2>
+      <div class="hint">Sube hasta 12 fotos (fachada, salón, cocina, baños, habitaciones…). Se optimizan solas antes de enviarse.</div>
+      <div class="drop" id="drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+        <b>Toca para añadir fotos</b>
+        <span>o arrástralas aquí · JPG o PNG</span>
+      </div>
+      <input id="file" type="file" accept="image/*" multiple hidden>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+
+    <!-- 5 · Contacto -->
+    <div class="card">
+      <h2><span class="n">5</span>¿Cómo te contactamos?</h2>
+      <div class="grid">
+        <div class="f"><label>Nombre y apellidos <span class="req">*</span></label><input id="nombre" placeholder="Tu nombre" autocomplete="name"></div>
+        <div class="f"><label>Teléfono <span class="req">*</span></label><input id="telefono" type="tel" inputmode="tel" placeholder="600 000 000" autocomplete="tel"></div>
+        <div class="f full"><label>Email</label><input id="email" type="email" inputmode="email" placeholder="tucorreo@email.com" autocomplete="email"></div>
+        <div class="f full"><label>Comentarios (opcional)</label><textarea id="comentarios" placeholder="Cualquier detalle que quieras contarnos sobre la propiedad o tu situación."></textarea></div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <label class="consent"><input type="checkbox" id="consent"><span>He leído y acepto la <a href="/privacidad.html" target="_blank">Política de privacidad</a> y autorizo a Brava Dubai a contactarme sobre mi propiedad.</span></label>
+      <div class="err" id="err"></div>
+      <button class="btn" type="submit" id="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        <span id="submitLabel">Enviar mi propiedad</span>
+      </button>
+    </div>
+  </form>
+
+  <div class="done" id="done">
+    <div class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h2>¡Recibido, gracias!</h2>
+    <p>Hemos registrado los datos de tu propiedad. El equipo de Brava Dubai los revisará y te contactará muy pronto.</p>
+    <a class="btn" href="/">Volver a la web</a>
+  </div>
+</div></main>
+
+<footer class="foot"><div class="wrap"><div><a href="/aviso-legal.html">Aviso legal</a><a href="/privacidad.html">Privacidad</a><a href="/cookies.html">Cookies</a></div><div>© 2026 Nueva Gestión Brava Inmobiliaria, S.L.</div></div></footer>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(s){return document.querySelector(s);};
+  var qs=new URLSearchParams(location.search);
+  var ref=(qs.get("ref")||qs.get("c")||"").trim();
+
+  /* ---- chips (single + multi) ---- */
+  function initChips(box){
+    var single=box.hasAttribute("data-single");
+    box.querySelectorAll(".chip").forEach(function(c){
+      c.addEventListener("click",function(){
+        if(single){ box.querySelectorAll(".chip").forEach(function(o){ if(o!==c)o.classList.remove("on"); }); c.classList.toggle("on"); }
+        else c.classList.toggle("on");
+        if(box.id==="objetivo") syncPrecioLabel();
+      });
+    });
+  }
+  function chosen(box){ return Array.prototype.slice.call(box.querySelectorAll(".chip.on")).map(function(c){return c.getAttribute("data-val");}); }
+  initChips($("#objetivo")); initChips($("#extras"));
+
+  function syncPrecioLabel(){
+    var v=chosen($("#objetivo"))[0]||"";
+    var alquiler=/Alquiler|gestion/i.test(v);
+    $("#precioLbl").textContent=alquiler?"Renta mensual deseada (€)":"Precio de venta deseado (€)";
+    $("#precio").placeholder=alquiler?"Ej. 950":"Ej. 180000";
+  }
+
+  /* ---- fotos con reescalado en cliente ---- */
+  var MAX=12, fotos=[]; // {name, type, dataURL}
+  var drop=$("#drop"), fileInput=$("#file"), thumbs=$("#thumbs");
+  drop.addEventListener("click",function(){ fileInput.click(); });
+  ["dragover","dragenter"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add("hl"); }); });
+  ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.remove("hl"); }); });
+  drop.addEventListener("drop",function(e){ if(e.dataTransfer&&e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
+  fileInput.addEventListener("change",function(){ handleFiles(fileInput.files); fileInput.value=""; });
+
+  function handleFiles(list){
+    var arr=Array.prototype.slice.call(list).filter(function(f){ return /^image\//.test(f.type); });
+    (function next(i){
+      if(i>=arr.length||fotos.length>=MAX){ if(fotos.length>=MAX&&arr.length) showErr("Máximo "+MAX+" fotos. Se han añadido las primeras."); return; }
+      downscale(arr[i],function(dataURL){
+        if(dataURL) fotos.push({name:arr[i].name||("foto-"+(fotos.length+1)+".jpg"),type:"image/jpeg",dataURL:dataURL});
+        renderThumbs(); next(i+1);
+      });
+    })(0);
+  }
+  function downscale(file,cb){
+    var img=new Image(), url=URL.createObjectURL(file);
+    img.onload=function(){
+      try{
+        var MAXD=1600, w=img.width, h=img.height;
+        if(w>h && w>MAXD){ h=Math.round(h*MAXD/w); w=MAXD; }
+        else if(h>=w && h>MAXD){ w=Math.round(w*MAXD/h); h=MAXD; }
+        var cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img,0,0,w,h);
+        var out=cv.toDataURL("image/jpeg",0.72);
+        URL.revokeObjectURL(url); cb(out);
+      }catch(e){ URL.revokeObjectURL(url); cb(null); }
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); cb(null); };
+    img.src=url;
+  }
+  function renderThumbs(){
+    thumbs.innerHTML=fotos.map(function(f,i){
+      return '<div class="thumb"><img src="'+f.dataURL+'" alt=""><button type="button" data-rm="'+i+'" aria-label="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>';
+    }).join("");
+    thumbs.querySelectorAll("[data-rm]").forEach(function(b){ b.addEventListener("click",function(){ fotos.splice(parseInt(b.getAttribute("data-rm"),10),1); renderThumbs(); }); });
+  }
+
+  /* ---- errores ---- */
+  var errBox=$("#err"), errT=null;
+  function showErr(msg){ errBox.textContent=msg; errBox.classList.add("show"); clearTimeout(errT); errT=setTimeout(function(){ errBox.classList.remove("show"); },6000); errBox.scrollIntoView({behavior:"smooth",block:"center"}); }
+
+  /* ---- envío ---- */
+  $("#form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var nombre=$("#nombre").value.trim(), tel=$("#telefono").value.trim(), dir=$("#direccion").value.trim();
+    if(!nombre){ showErr("Por favor, dinos tu nombre."); return; }
+    if(!tel){ showErr("Necesitamos un teléfono para contactarte."); return; }
+    if(!dir){ showErr("Indica la dirección del inmueble."); return; }
+    if(!$("#consent").checked){ showErr("Debes aceptar la Política de privacidad para continuar."); return; }
+
+    var payload={
+      ref:ref,
+      nombre:nombre, telefono:tel, email:$("#email").value.trim(),
+      objetivo:chosen($("#objetivo"))[0]||"",
+      direccion:dir, poblacion:$("#poblacion").value.trim(), tipo:$("#tipo").value,
+      metros:$("#metros").value, habitaciones:$("#habitaciones").value, banos:$("#banos").value,
+      planta:$("#planta").value.trim(), anio:$("#anio").value, estado:$("#estado").value,
+      situacion:$("#situacion").value, extras:chosen($("#extras")),
+      precio:$("#precio").value, comentarios:$("#comentarios").value.trim(),
+      fotos:fotos.map(function(f){ return {nombre:f.name,tipo:f.type,data:f.dataURL}; })
+    };
+
+    var btn=$("#submit"); btn.disabled=true; $("#submitLabel").textContent="Enviando…";
+    fetch("/api/property-intake",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(res.ok&&res.j&&(res.j.ok||res.j.id)){
+          $("#form").style.display="none"; $("#intro").style.display="none";
+          $("#done").classList.add("show");
+          window.scrollTo({top:0,behavior:"smooth"});
+        }else{
+          btn.disabled=false; $("#submitLabel").textContent="Enviar mi propiedad";
+          showErr((res.j&&res.j.error)||"No se pudo enviar. Inténtalo de nuevo en unos segundos.");
+        }
+      })
+      .catch(function(){
+        btn.disabled=false; $("#submitLabel").textContent="Enviar mi propiedad";
+        showErr("No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.");
+      });
+  });
+})();
+</script>
+
+<div id="cookieBar" style="position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#0E1116;color:#fff;padding:14px 18px;display:none;font-size:13.5px;line-height:1.5">
+  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center">
+    <span style="flex:1;min-width:220px">Usamos únicamente cookies y almacenamiento técnicos necesarios para el funcionamiento del sitio. Más información en la <a href="/cookies.html" style="color:#fff">Política de cookies</a>.</span>
+    <button id="cookieOk" style="background:#fff;color:#0E1116;border:0;border-radius:9px;padding:9px 18px;font-weight:700;font-size:13.5px;cursor:pointer">Entendido</button>
+  </div>
+</div>
+<script>(function(){try{if(!localStorage.getItem('vlc_cookie_ok')){var b=document.getElementById('cookieBar');if(b){b.style.display='block';document.getElementById('cookieOk').onclick=function(){try{localStorage.setItem('vlc_cookie_ok','1')}catch(e){}b.style.display='none';};}}}catch(e){}})();</script>
+</body>
+</html>

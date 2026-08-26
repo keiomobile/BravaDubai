@@ -1,0 +1,8 @@
+node_modules/
+.netlify/
+.env
+.env.*
+.DS_Store
+*.log
+index_v1_backup.html
+netlify/functions/_docs/

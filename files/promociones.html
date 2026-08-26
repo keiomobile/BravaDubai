@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promociones off-plan en Dubái · Brava Real Estate</title>
+<meta name="description" content="Promociones de obra nueva en Dubái de los mejores promotores: Binghatti, Emaar, Damac y más. Unidades, precios y planes de pago. Co-invierte o compra con Brava.">
+<meta name="theme-color" content="#06070a">
+<link rel="icon" href="/brand/brava-favicon.png">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700,800&f[]=zodiak@400,500,700&display=swap">
+<link rel="stylesheet" href="/brava.css">
+<style>
+  .promos-sec{padding:34px 0 80px}
+  .promos-head{max-width:720px;margin-bottom:30px}
+  .promos-head h1{font-size:clamp(30px,5vw,50px);line-height:1.05;letter-spacing:-.02em}
+  .promos-head .em{font-family:var(--serif);font-style:italic;color:var(--green)}
+  .promos-head p{color:var(--muted);font-size:16px;line-height:1.6;margin-top:16px;max-width:60ch}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+  .filters button{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+  .filters button.on{background:var(--green);color:#06231a;border-color:var(--green)}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+  @media(max-width:640px){.pgrid{grid-template-columns:1fr;gap:16px}}
+  .pcard{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;transition:.2s;display:flex;flex-direction:column}
+  .pcard:hover{border-color:var(--line2);transform:translateY(-3px)}
+  .pcard .ph{height:200px;background:#161616 center/cover no-repeat;position:relative}
+  .pcard .ph .badges{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
+  .pcard .ph .entrega{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;backdrop-filter:blur(4px)}
+  .badge2{font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:99px;letter-spacing:.02em}
+  .badge2.dest{background:var(--gold,#c79a4b);color:#241a06}
+  .badge2.est{background:rgba(24,185,129,.9);color:#06231a}
+  .pcard .bd{padding:16px 18px;flex:1;display:flex;flex-direction:column}
+  .pcard .promotor{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:700}
+  .promotor-line{min-height:28px;display:flex;align-items:center;gap:10px}
+  .promotor-line img{width:auto;height:22px;max-width:112px;object-fit:contain;filter:grayscale(1) brightness(0) invert(1);opacity:.8}
+  .promotor-line .emaar-logo{height:25px;filter:grayscale(1) brightness(0) invert(1)}
+  .pcard h3{font-size:19px;margin:6px 0 3px;letter-spacing:-.01em}
+  .pcard .loc{color:var(--muted);font-size:13.5px}
+  .pcard .price{font-weight:800;font-size:17px;margin-top:10px}
+  .pcard .meta{display:flex;gap:14px;margin-top:8px;font-size:12px;color:var(--faint)}
+  .obra{margin-top:10px}
+  .obra .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+  .obra .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:4px}
+  .obra .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--green-d,#0f8f63),var(--green))}
+  .pcard .cta{margin-top:14px;text-align:center;background:var(--green);color:#06231a;border-radius:10px;padding:11px;font-weight:700;font-size:14px}
+  .loading{padding:60px;text-align:center;color:var(--muted)}
+  /* modal */
+  .pmodal{position:fixed;inset:0;z-index:200;background:rgba(4,5,8,.75);backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+  .pmodal.show{display:flex}
+  .pmodal-card{position:relative;background:var(--bg2,#0d0f14);border:1px solid var(--line);border-radius:20px;max-width:760px;width:100%;margin:24px 0;overflow:hidden}
+  .pmodal-gallery{display:flex;gap:8px;overflow-x:auto;padding:14px;background:#0a0b0e}
+  .pmodal-gallery img{height:180px;border-radius:10px;flex:0 0 auto}
+  .pmodal-body{padding:24px 28px}
+  .pmodal-body h2{font-size:26px;letter-spacing:-.01em}
+  .pmodal-close{position:absolute;top:26px;right:26px;background:rgba(0,0,0,.5);border:1px solid var(--line2);color:#fff;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2}
+  .krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:16px 0}
+  .krow .kb{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .krow .kb .kl{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint)}
+  .krow .kb .kv{font-size:17px;font-weight:700;margin-top:3px}
+  .utable{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+  .utable th,.utable td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line)}
+  .utable th{font-size:11px;text-transform:uppercase;color:var(--faint);letter-spacing:.06em}
+  .utable td.n,.utable th.n{text-align:right}
+  .sect-t{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:22px 0 8px}
+</style>
+</head>
+<body>
+<div class="amb"><i class="g1"></i><i class="g2"></i></div>
+
+<header id="header">
+  <div class="wrap nav">
+    <a href="/" class="brand"><img src="/brand/brava-realestate-white.png" alt="Brava Real Estate"></a>
+    <nav class="nav-mid">
+      <a href="/#casa">La casa</a>
+      <a href="/brava-real-estate">Real Estate</a>
+      <a href="/propiedades">Propiedades</a>
+      <a href="/promociones" style="color:var(--ink)">Promociones</a>
+      <a href="/simulador-fiscal.html">Simulador fiscal</a>
+    </nav>
+    <div class="nav-r">
+      <div class="lang" id="lang" data-noi18n><button data-lang="es" class="on">ES</button><span class="sep">·</span><button data-lang="en">EN</button><span class="sep">·</span><button data-lang="ar">ع</button></div>
+      <a href="#lead" class="access">Contactar</a>
+      <button class="burger" id="burger" aria-label="Menú"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="nav-mobile" id="navMobile">
+  <button class="close" id="navClose">✕</button>
+  <a href="/#casa">La casa</a><a href="/brava-real-estate">Real Estate</a><a href="/propiedades">Propiedades</a><a href="/promociones">Promociones</a><a href="/simulador-fiscal.html">Simulador fiscal</a><a href="#lead" style="color:var(--green)">Contactar</a>
+</nav>
+
+<section class="sec promos-sec">
+  <div class="wrap">
+    <div class="promos-head reveal">
+      <div class="eyebrow" style="margin-bottom:14px">Brava Real Estate · Obra nueva</div>
+      <h1>Promociones <span class="em">off-plan</span> en Dubái</h1>
+      <p>Selección de proyectos de los mejores promotores —Binghatti, Emaar, Damac y más— con planes de pago, plusvalía en construcción y opción de co-inversión con Brava.</p>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div id="grid"><div class="loading">Cargando promociones…</div></div>
+  </div>
+</section>
+
+<!-- LEAD -->
+<section class="sec form-sec" id="lead">
+  <div class="wrap">
+    <div class="form-grid reveal">
+      <div class="lead-copy"><div class="sec-num">Solicita información</div><h2 style="margin-top:16px">¿Te interesa alguna promoción?</h2><p>Déjanos tus datos y te enviamos el dossier completo, precios y disponibilidad, sin compromiso.</p></div>
+      <form id="reForm">
+        <div class="field"><label>Nombre completo</label><input name="nombre" type="text" placeholder="Juan Pérez" required></div>
+        <div class="field"><label>Email</label><input name="email" type="email" placeholder="juan@mail.com" required></div>
+        <div class="field"><label>WhatsApp</label><div class="phone-row"><select name="prefijo"><option value="+971">🇦🇪 +971</option><option value="+34" selected>🇪🇸 +34</option><option value="+44">🇬🇧 +44</option><option value="+1">🇺🇸 +1</option></select><input name="telefono" type="tel" placeholder="600 000 000" required></div></div>
+        <div class="field"><label>Promoción de interés</label><input name="proyecto" id="leadProyecto" type="text" placeholder="Cualquiera / nombre del proyecto"></div>
+        <button class="btn-lead" type="submit">Solicitar información <span>→</span></button>
+        <div class="form-msg" id="reMsg"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-b" style="border-top:1px solid var(--line);padding-top:26px">
+      <span>© 2026 BRAVA Global Holding Limited</span>
+      <span>Dubai · United Arab Emirates</span>
+    </div>
+  </div>
+</footer>
+
+<div class="pmodal" id="pmodal"><div class="pmodal-card" id="pmodalCard"></div></div>
+
+<script>
+var header=document.getElementById('header');
+addEventListener('scroll',function(){header.classList.toggle('scrolled',scrollY>30)});
+document.getElementById('burger').onclick=function(){document.getElementById('navMobile').classList.add('open')};
+document.getElementById('navClose').onclick=function(){document.getElementById('navMobile').classList.remove('open')};
+document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){document.getElementById('navMobile').classList.remove('open')}});
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function tx(s){return window.BravaI18n?BravaI18n.t(s):s;}
+function lang(){return window.BravaI18n?BravaI18n.getLang():'es';}
+function money(n,cur){ var lc=lang()==='ar'?'ar-AE':lang()==='en'?'en-AE':'es-ES'; return new Intl.NumberFormat(lc,{style:'currency',currency:cur||'AED',maximumFractionDigits:0}).format(Math.round(Number(n)||0)); }
+function portada(p){ var i=p.imagenes||[]; if(!i.length)return null; var x=i.find(function(y){return y.portada;})||i[0]; return x.url; }
+function publicable(p){return !!(p&&p.nombre&&p.promotorNombre&&p.ubicacion&&p.descripcion&&Number(p.precioDesde)>=1000&&(p.imagenes||[]).length);}
+function content(p,k){var i=p.i18n||p.traducciones||{},l=lang();return(i[k]&&i[k][l])||(i[l]&&i[l][k])||p[k]||'';}
+var DEVLOGOS={
+  'damac':'/developers/damac.svg','damac properties':'/developers/damac.svg','binghatti':'/developers/binghatti.svg',
+  'emaar':'https://d33om22pidobo4.cloudfront.net/developer/logo/emaarpng-2677f9f5-362b-4f80-9162-1d3ecc215deb.png','emaar properties':'https://d33om22pidobo4.cloudfront.net/developer/logo/emaarpng-2677f9f5-362b-4f80-9162-1d3ecc215deb.png','nakheel':'/developers/nakheel.svg',
+  'samana':'https://www.samanadevelopers.com/assets/img/updated-logo/black.png','samana developers':'https://www.samanadevelopers.com/assets/img/updated-logo/black.png','sobha':'/developers/sobha.svg','sobha realty':'/developers/sobha.svg'
+};
+function developerLogo(name){var k=String(name||'').trim().toLowerCase(),src=DEVLOGOS[k];return src?'<img '+(k.indexOf('emaar')===0?'class="emaar-logo" ':'')+'src="'+src+'" alt="'+esc(name)+'">':'<span class="promotor">'+esc(name||'Brava')+'</span>';}
+
+var PROMOS=[], FILTRO='todos';
+function loadPromos(){
+  fetch('/api/proyectos-publicos').then(function(r){return r.ok?r.json():{proyectos:[]};}).then(function(d){
+    PROMOS=(d.proyectos||[]).filter(publicable); renderFilters(); renderGrid();
+  }).catch(function(){ document.getElementById('grid').innerHTML='<div class="loading">No se pudieron cargar las promociones. Inténtalo más tarde.</div>'; });
+}
+function renderFilters(){
+  var proms=['todos'].concat(Array.from(new Set(PROMOS.map(function(p){return p.promotorNombre;}).filter(Boolean))));
+  document.getElementById('filters').innerHTML=proms.map(function(pr){ return '<button data-f="'+esc(pr)+'"'+(pr===FILTRO?' class="on"':'')+'>'+(pr==='todos'?tx('Todas'):esc(pr))+'</button>'; }).join('');
+  Array.prototype.forEach.call(document.querySelectorAll('#filters button'),function(b){ b.onclick=function(){ FILTRO=b.getAttribute('data-f'); renderFilters(); renderGrid(); }; });
+}
+function renderGrid(){
+  var list=FILTRO==='todos'?PROMOS:PROMOS.filter(function(p){return p.promotorNombre===FILTRO;});
+  if(!list.length){ document.getElementById('grid').innerHTML='<div class="loading">'+tx('Pronto publicaremos nuevas promociones aquí.')+'</div>'; return; }
+  document.getElementById('grid').innerHTML='<div class="pgrid">'+list.map(function(p,i){
+    var ph=portada(p), un=(p.unidades||[]).length;
+    var badges=(p.destacado?'<span class="badge2 dest">'+tx('Destacada')+'</span>':'')+(p.estado&&p.estado!=='Disponible'?'<span class="badge2 est">'+esc(p.estado)+'</span>':'');
+    return '<div class="pcard" data-i="'+i+'"><div class="ph" style="'+(ph?('background-image:url('+JSON.stringify(ph)+')'):'')+'">'
+      +'<div class="badges">'+badges+'</div>'+(p.entrega?'<span class="entrega">'+tx('Entrega')+' '+esc(p.entrega)+'</span>':'')
+      +(ph?'':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint)">Brava</div>')+'</div>'
+      +'<div class="bd"><div class="promotor-line">'+developerLogo(p.promotorNombre)+'</div><h3>'+esc(content(p,'nombre'))+'</h3><div class="loc">'+esc(content(p,'ubicacion'))+'</div>'
+      +(p.precioDesde?'<div class="price">'+tx('Desde')+' '+money(p.precioDesde,p.moneda)+'</div>':'')
+      +'<div class="meta">'+(p.tipo?'<span>'+esc(p.tipo)+'</span>':'')+(un?'<span>'+un+' '+tx('Unidades').toLowerCase()+'</span>':'')+'</div>'
+      +(p.obraPct?'<div class="obra"><div class="lbl"><span>'+tx('Obra')+(p.obraFase?' · '+esc(p.obraFase):'')+'</span><span>'+p.obraPct+'%</span></div><div class="bar"><i style="width:'+p.obraPct+'%"></i></div></div>':'')
+      +'<div class="cta">'+tx('Ver promoción')+'</div></div></div>';
+  }).join('')+'</div>';
+  var cards=document.querySelectorAll('#grid .pcard');
+  Array.prototype.forEach.call(cards,function(c){ c.onclick=function(){ openPromo(list[parseInt(c.getAttribute('data-i'),10)]); }; });
+}
+function openPromo(p){
+  var imgs=p.imagenes||[];
+  var gal=imgs.length?'<div class="pmodal-gallery">'+imgs.map(function(im){return '<img src="'+esc(im.url)+'" alt="">';}).join('')+'</div>':'';
+  var uns=p.unidades||[];
+  var utbl=uns.length?'<div class="sect-t">'+tx('Unidades')+'</div><table class="utable"><thead><tr><th>Tipo</th><th>'+tx('Dorm.')+'</th><th>m²</th><th class="n">'+tx('Precio')+'</th></tr></thead><tbody>'+uns.map(function(u){return '<tr><td>'+esc(u.tipo||'—')+'</td><td>'+esc(u.dorm||'—')+'</td><td>'+esc(u.sup||'—')+'</td><td class="n">'+(u.precio?money(u.precio,p.moneda):'—')+'</td></tr>';}).join('')+'</tbody></table>':'';
+  document.getElementById('pmodalCard').innerHTML='<button class="pmodal-close" id="pmClose">✕</button>'+gal
+    +'<div class="pmodal-body"><div class="promotor-line">'+developerLogo(p.promotorNombre)+'</div>'
+    +'<h2>'+esc(content(p,'nombre'))+'</h2><div style="color:var(--muted);font-size:14px">'+esc(content(p,'ubicacion'))+'</div>'
+    +'<div class="krow">'
+    +(p.precioDesde?'<div class="kb"><div class="kl">'+tx('Desde')+'</div><div class="kv">'+money(p.precioDesde,p.moneda)+'</div></div>':'')
+    +(p.entrega?'<div class="kb"><div class="kl">'+tx('Entrega')+'</div><div class="kv">'+esc(p.entrega)+'</div></div>':'')
+    +(p.tipo?'<div class="kb"><div class="kl">Tipo</div><div class="kv">'+esc(p.tipo)+'</div></div>':'')
+    +(p.obraPct?'<div class="kb"><div class="kl">'+tx('Obra')+'</div><div class="kv">'+p.obraPct+'%</div></div>':'')
+    +'</div>'
+    +(p.descripcion?'<p style="font-size:15px;line-height:1.7;color:var(--ink-dim,#c9ccd1)">'+esc(content(p,'descripcion'))+'</p>':'')
+    +utbl
+    +(p.planPago?'<div class="sect-t">'+tx('Plan de pago')+'</div><p style="font-size:14px;line-height:1.6;color:var(--muted)">'+esc(content(p,'planPago'))+'</p>':'')
+    +'<button class="btn-lead" style="margin-top:22px" id="pmLead">'+tx('Solicitar información')+' <span>→</span></button>'
+    +'</div>';
+  document.getElementById('pmodal').classList.add('show'); document.body.style.overflow='hidden';
+  document.getElementById('pmClose').onclick=closePromo;
+  document.getElementById('pmLead').onclick=function(){ closePromo(); var lp=document.getElementById('leadProyecto'); if(lp)lp.value=p.nombre; document.getElementById('lead').scrollIntoView({behavior:'smooth'}); };
+}
+function closePromo(){ document.getElementById('pmodal').classList.remove('show'); document.body.style.overflow=''; }
+document.getElementById('pmodal').addEventListener('click',function(e){ if(e.target===this)closePromo(); });
+
+document.getElementById('reForm').addEventListener('submit',function(e){
+  e.preventDefault(); var f=e.target, msg=document.getElementById('reMsg');
+  var proyecto=(document.getElementById('leadProyecto').value||'').trim();
+  var data={ nombre:f.nombre.value.trim(), email:f.email.value.trim(), telefono:(f.prefijo.value+' '+f.telefono.value).trim(), mensaje:'Promociones off-plan'+(proyecto?(' · Interés: '+proyecto):''), marca:'realestate', origen:'Web · Promociones'+(proyecto?(' · '+proyecto):'') };
+  msg.className='form-msg'; var btn=f.querySelector('button'); btn.disabled=true; btn.textContent='Enviando…';
+  fetch('/api/lead-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json().catch(function(){return{}})}).then(function(res){ if(res&&res.ok){ f.reset(); msg.className='form-msg ok'; msg.textContent='✓ Recibido. Te enviamos el dossier en menos de 24h.'; } else { msg.className='form-msg err'; msg.textContent=(res&&res.error)||'No se pudo enviar.'; } }).catch(function(){ msg.className='form-msg err'; msg.textContent='Error de conexión.'; }).finally(function(){ btn.disabled=false; btn.innerHTML='Solicitar información <span>→</span>'; });
+});
+
+loadPromos();
+document.addEventListener('brava:languagechange',function(){renderFilters();renderGrid();});
+</script>
+<script src="/i18n-dict.js"></script>
+<script src="/i18n.js"></script>
+</body>
+</html>

@@ -2423,6 +2423,12 @@ export default async (req) => {
       let support=null; if(user.impersonated_by){ try{ const [a]=await db.sql`SELECT name,username FROM usuarios WHERE id=${user.impersonated_by}`; support={activo:true,actor:(a&&a.name)||"Equipo Brava",motivo:user.support_reason||"Soporte al inversor"}; }catch(e){support={activo:true,actor:"Equipo Brava"};} }
       return json({ inversor: { nombre:user.name, username:user.username }, contratos, esSocio, oportunidades, empresa, aedPer: AEDPER, support });
     }
+    if (path === "mi-perfil-inversor" && method === "GET") {
+      const [p]=await db.sql`SELECT name,username,telefono,email_verified,consent,created_at FROM usuarios WHERE id=${user.id}`;if(!p)return json({error:"Perfil no encontrado"},404);const prefs=(p.consent&&p.consent.investorPreferences)||{};return json({profile:{name:p.name||"",email:p.username||"",phone:p.telefono||"",emailVerified:p.email_verified!==false,memberSince:p.created_at,preferences:{emailUpdates:prefs.emailUpdates!==false,whatsappUpdates:!!prefs.whatsappUpdates,monthlySummary:prefs.monthlySummary!==false,transactionAlerts:true},supportMode:!!user.impersonated_by}});
+    }
+    if (path === "mi-perfil-inversor" && method === "PUT") {
+      const b=await req.json().catch(()=>({})),phone=String(b.phone||"").trim().slice(0,40);if(phone&&!/^[+0-9 ()-]{6,40}$/.test(phone))return json({error:"Teléfono no válido"},400);const [p]=await db.sql`SELECT consent FROM usuarios WHERE id=${user.id}`,consent=(p&&p.consent&&typeof p.consent==="object")?p.consent:{};consent.investorPreferences={emailUpdates:b.preferences&&b.preferences.emailUpdates!==false,whatsappUpdates:!!(b.preferences&&b.preferences.whatsappUpdates),monthlySummary:b.preferences&&b.preferences.monthlySummary!==false,transactionAlerts:true};await db.sql`UPDATE usuarios SET telefono=${phone},consent=${JSON.stringify(consent)}::jsonb WHERE id=${user.id}`;return json({ok:true});
+    }
     /* Decisión de vencimiento y aceptación electrónica simple del inversor. */
     if (seg[0] === "mi-inversion" && seg[1] && seg[2] === "decision" && method === "POST") {
       if(user.impersonated_by) return json({error:"Por seguridad, la decisión contractual debe confirmarla personalmente el inversor"},403);

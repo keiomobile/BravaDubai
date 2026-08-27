@@ -120,6 +120,18 @@ test("el portal inversor ofrece pagos, documentos y señales de atención", asyn
   assert.match(crm, /Revisar acceso/);
 });
 
+test("el inversor gestiona perfil y solicitudes sensibles sin exponer datos bancarios", async () => {
+  const [api, portal] = await Promise.all([read("netlify/functions/api.mjs"), read("files/inversor.html")]);
+  assert.match(api, /path === "mi-perfil-inversor"/);
+  assert.match(api, /investorPreferences/);
+  assert.match(api, /Teléfono no válido/);
+  assert.match(portal, /Perfil y seguridad/);
+  assert.match(portal, /Resumen patrimonial mensual/);
+  assert.match(portal, /Solicitar cambio bancario seguro/);
+  assert.match(portal, /No introduzcas números de cuenta, tarjetas ni claves/);
+  assert.match(portal, /Solicitar videollamada/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

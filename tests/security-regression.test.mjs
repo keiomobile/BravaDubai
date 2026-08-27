@@ -83,3 +83,16 @@ test("los hitos del inversor generan aviso corporativo por email", async () => {
   assert.match(reminder, /Tu inversión requiere una decisión · BRAVA/);
   assert.match(reminder, /https:\/\/bravaae\.com\/inversor\.html/);
 });
+
+test("las tres divisiones comparten chat contextual gobernado desde el CRM", async () => {
+  const [api,widget,crm]=await Promise.all([read("netlify/functions/api.mjs"),read("files/i18n.js"),read("files/crm.html")]);
+  assert.match(api,/path === "chat"/);
+  assert.match(api,/ai_chat_log/);
+  assert.match(api,/path === "ai\/chat-config"/);
+  assert.match(api,/path === "ai\/prompt\/improve"/);
+  assert.match(api,/gpt-4o-mini/);
+  assert.match(widget,/BRAVA contextual support/);
+  assert.match(widget,/investment.*realestate.*rent/s);
+  assert.match(crm,/IA de soporte web/);
+  assert.match(crm,/Mejorar prompt con IA/);
+});

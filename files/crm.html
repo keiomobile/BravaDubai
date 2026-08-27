@@ -4995,7 +4995,8 @@ function viewAjustes(){
    +'<div class="ff" style="margin-bottom:16px"><label>Repite la nueva contraseña</label><input id="pwNueva2" type="password" placeholder="••••••••"></div>'
    +'<button class="btn" id="savePw">Guardar contraseña</button>'
    +'<div id="pwMsg" style="margin-top:12px;font-size:13px;font-weight:600"></div>'
-   +'</div></div></div>';
+   +'</div></div></div>'
+   +((SESSION.role==='admin'||SESSION.role==='superadmin')?'<div class="card" style="margin-top:16px"><div class="card-head"><h3>IA de soporte web</h3><span class="chip c-pos">Activa</span></div><div class="card-body" style="padding:20px"><p class="tsub" style="margin:0 0 14px">Gobierna el comportamiento del chat común de Investment, Real Estate y Rent. Las reglas se aplican inmediatamente a las tres webs.</p><div class="ff"><label>Prompt corporativo base</label><textarea id="aiBasePrompt" style="min-height:140px" placeholder="Identidad, tono, límites y criterios de derivación…"></textarea></div><div class="grid3" style="margin-top:12px"><div class="ff"><label>Contexto Investment</label><textarea id="aiCtxInvestment" style="min-height:110px"></textarea></div><div class="ff"><label>Contexto Real Estate</label><textarea id="aiCtxRealestate" style="min-height:110px"></textarea></div><div class="ff"><label>Contexto Rent</label><textarea id="aiCtxRent" style="min-height:110px"></textarea></div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn ghost" id="aiImprovePrompt">✦ Mejorar prompt con IA</button><button class="btn" id="aiSavePrompt">Guardar configuración</button></div><div id="aiPromptMsg" class="tsub" style="margin-top:10px"></div></div></div>':'');
   $$('#ajustes .ff input',main);
   $('#savePw').onclick=function(){
     var a=$('#pwActual').value, n=$('#pwNueva').value, n2=$('#pwNueva2').value, msg=$('#pwMsg');
@@ -5006,6 +5007,11 @@ function viewAjustes(){
     if(!BACKEND){ msg.style.color='var(--grey)'; msg.textContent='En modo local no se cambia la contraseña real.'; return; }
     apiChangePassword(a,n).then(function(r){ if(r.ok){ msg.style.color='var(--pos)'; msg.textContent='Contraseña actualizada correctamente.'; $('#pwActual').value='';$('#pwNueva').value='';$('#pwNueva2').value=''; } else { msg.textContent=r.data.error||'No se pudo cambiar.'; } }).catch(function(){ msg.textContent='Sin conexión con el servidor.'; });
   };
+  if($('#aiBasePrompt')){
+    apiG('/ai/chat-config').then(function(r){var c=(r.data&&r.data.config)||{},x=c.contexts||{};$('#aiBasePrompt').value=c.basePrompt||'';$('#aiCtxInvestment').value=x.investment||'';$('#aiCtxRealestate').value=x.realestate||'';$('#aiCtxRent').value=x.rent||'';});
+    $('#aiImprovePrompt').onclick=function(){var b=this,m=$('#aiPromptMsg');b.disabled=true;m.textContent='Mejorando instrucciones…';apiPP('/ai/prompt/improve','POST',{prompt:$('#aiBasePrompt').value}).then(function(r){if(r.ok){$('#aiBasePrompt').value=r.data.prompt||'';m.textContent='Prompt mejorado. Revísalo y pulsa Guardar.';}else m.textContent=(r.data&&r.data.error)||'No se pudo mejorar.';}).finally(function(){b.disabled=false;});};
+    $('#aiSavePrompt').onclick=function(){var m=$('#aiPromptMsg');apiPP('/ai/chat-config','PUT',{basePrompt:$('#aiBasePrompt').value,contexts:{investment:$('#aiCtxInvestment').value,realestate:$('#aiCtxRealestate').value,rent:$('#aiCtxRent').value}}).then(function(r){m.textContent=r.ok?'Configuración publicada en las tres webs.':((r.data&&r.data.error)||'No se pudo guardar.');});};
+  }
 }
 
 /* ============================================================

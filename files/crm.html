@@ -978,7 +978,7 @@ function iaEmail(path, body, defaultEmail){
   toast('Enviando por email…');
   fetch(API_BASE+'/'+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(Object.assign({enviarA:to},body))})
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,data:j}; }); })
-    .then(function(res){ var d=res.data||{}; if(res.ok&&d.sent){ toast('✓ Enviado a '+to); } else if(res.ok&&d.emailConfig===false){ toast('Falta configurar el email (RESEND_API_KEY) en Netlify'); } else { toast((d&&d.error)||'No se pudo enviar'); } })
+    .then(function(res){ var d=res.data||{}; if(res.ok&&d.sent){ toast('✓ Enviado a '+to); } else if(res.ok&&d.emailConfig===false){ toast('No hay ningún canal de correo corporativo disponible. Revisa Microsoft 365 en Correo electrónico.'); } else { toast((d&&d.error)||'No se pudo enviar'); } })
     .catch(function(){ toast('Error de conexión'); });
 }
 function printReport(html){
@@ -2554,12 +2554,13 @@ function mailRenderApp(){
   var acctSel=MAILST.accounts.map(function(a){ var primary=a.displayName||a.emailAddress||a.id; var secondary=a.emailAddress&&a.emailAddress!==primary?' · '+a.emailAddress:''; return '<option value="'+esc(a.id)+'"'+(a.id===MAILST.accountId?' selected':'')+'>'+esc(primary+secondary)+(a.active?'':' (reconectar)')+'</option>'; }).join('');
   var admin=MAILST.config&&MAILST.config.puedeGestionar;
   var hdr=$('#mailHdr');
-  if(hdr) hdr.innerHTML='<button class="btn ghost" id="mailSyncBtn" title="Sincronizar">↻ Sincronizar</button>'+(admin?' <button class="btn ghost" id="mailAddBtn" title="Conectar otra cuenta">+ Añadir buzón</button>':'');
+  if(hdr) hdr.innerHTML='<button class="btn ghost" id="mailSyncBtn" title="Sincronizar">↻ Sincronizar</button>'+(admin?' <button class="btn ghost" id="mailStatusBtn">Estado del sistema</button> <button class="btn ghost" id="mailAddBtn" title="Conectar otra cuenta">+ Añadir buzón</button>':'');
   var r=$('#mailRoot');
   r.innerHTML=''
     +'<div class="mailgrid" data-pane="'+MAILST.pane+'">'
     +' <aside class="mailcol mailcol-side">'
     +'   <div class="mailaccount"><div class="mailaccount-label">Buzón activo</div><select id="mailAcctSel" class="mailsel">'+acctSel+'</select><div class="mailaccount-meta">Recibes y envías como <b>'+esc(acct.emailAddress||acct.displayName||'—')+'</b></div></div>'
+    +(admin?'<div class="role-note" style="margin-bottom:12px"><b>Sincronización automática activa</b><br>El CRM comprueba mensajes nuevos cada 5 minutos. Para usar info@, hello@ u otra marca como remitente independiente, añádelo como buzón compartido con permisos Send As y Read and Manage.</div>':'')
     +'   <button class="btn" id="mailComposeBtn" style="width:100%;margin-bottom:10px"'+(mailCanSend()?'':' disabled title="Sin permiso de envío"')+'>＋ Redactar correo</button>'
     +'   <div id="mailFolders" class="mailfolders"><div class="tsub" style="padding:8px">Cargando carpetas…</div></div>'
     +(admin?'<div style="margin-top:10px"><button class="btn ghost" id="mailPermsBtn" style="width:100%">Permisos y auditoría</button></div>':'')
@@ -2576,6 +2577,7 @@ function mailRenderApp(){
   var sb=$('#mailSearchBtn'); if(sb)sb.onclick=function(){ MAILST.q=($('#mailSearch').value||'').trim(); MAILST.cursor=null; mailLoadThreads(); };
   var si=$('#mailSearch'); if(si)si.onkeydown=function(ev){ if(ev.key==='Enter'){ MAILST.q=(si.value||'').trim(); MAILST.cursor=null; mailLoadThreads(); } };
   var syncB=$('#mailSyncBtn'); if(syncB)syncB.onclick=function(){ mailSync(); };
+  var statusB=$('#mailStatusBtn'); if(statusB)statusB.onclick=mailStatusModal;
   var addB=$('#mailAddBtn'); if(addB)addB.onclick=function(){ mailConnectChoose(); };
   var pb=$('#mailPermsBtn'); if(pb)pb.onclick=function(){ mailPermsModal(); };
 }
@@ -2756,6 +2758,14 @@ function mailConnectChoose(){
     [{t:'Cancelar',cls:'ghost',fn:closeModal},
      {t:'Conectar individual',cls:'',fn:function(){ closeModal(); mailConnect('individual'); }},
      {t:'Conectar compartida',cls:'ghost',fn:function(){ var u=(collect().sharedUpn||'').trim(); if(!u){ toast('Indica el UPN del buzón compartido'); return; } closeModal(); mailConnect('shared',u); }}]);
+}
+function mailStatusModal(){
+  apiG('/mail/status').then(function(r){
+    if(!r.ok){toast((r.data&&r.data.error)||'No se pudo comprobar');return;}
+    var d=r.data||{},accounts=d.accounts||[];
+    var rows=accounts.length?accounts.map(function(a){var ok=a.active&&a.synced;return '<div class="drow"><span class="dk"><b>'+esc(a.displayName||a.emailAddress)+'</b><br><span class="tsub">'+esc(a.emailAddress||'')+' · '+(a.accountType==='shared'?'Compartido':'Individual')+'</span></span><span class="dv">'+chip(ok?'Operativo':(a.active?'Conectado':'Requiere atención'),ok?'c-pos':(a.active?'c-warn':'c-neg'))+(a.corporateName?'':'<div class="tsub" style="color:var(--warn);margin-top:4px">Nombre visible no corporativo</div>')+(a.lastError?'<div class="tsub" style="color:var(--neg);margin-top:4px">'+esc(a.lastError)+'</div>':'')+'</span></div>';}).join(''):'<div class="empty"><p>No hay buzones conectados.</p></div>';
+    openModal('Estado del correo','Diagnóstico seguro de Microsoft 365','<div class="role-note" style="margin-bottom:12px"><b>'+(d.configured?'Configuración Microsoft correcta':'Configuración incompleta')+'</b><br>Sincronización automática cada '+(d.syncIntervalMinutes||5)+' minutos · Envío transaccional '+(d.transactionalFallback?'activo':'inactivo')+'</div>'+rows,[{t:'Cerrar',cls:'ghost',fn:closeModal}]);
+  });
 }
 function mailLinkModal(thrId,subj){
   var opts=[['lead','Lead'],['cliente','Cliente'],['colaborador','Colaborador'],['agente','Agente'],['propiedad','Propiedad'],['proyecto','Proyecto/Promoción'],['operacion','Operación'],['rg_expediente','Expediente Brava Rent']];

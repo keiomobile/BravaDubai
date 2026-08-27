@@ -57,3 +57,28 @@ test("socios e inversores reciben una invitación corporativa previsualizable", 
   assert.match(crm, /Vista previa del email/);
   assert.match(crm, /Preparar y enviar acceso/);
 });
+
+test("el correo se sincroniza automáticamente y los formularios confirman recepción", async () => {
+  const [api, sync, crm] = await Promise.all([
+    read("netlify/functions/api.mjs"),
+    read("netlify/functions/mail-auto-sync.mjs"),
+    read("files/crm.html"),
+  ]);
+  assert.match(sync, /schedule:\s*"\*\/5 \* \* \* \*"/);
+  assert.match(sync, /syncDelta/);
+  assert.match(sync, /last_delta_link/);
+  assert.match(api, /Hemos recibido tu solicitud/);
+  assert.match(api, /Solicitud de colaboración recibida/);
+  assert.match(api, /Ficha de propiedad recibida/);
+  assert.match(api, /Solicitud recibida · Brava Rent/);
+  assert.match(api, /path === "mail\/status"/);
+  assert.match(crm, /Sincronización automática activa/);
+  assert.match(crm, /Estado del sistema/);
+});
+
+test("los hitos del inversor generan aviso corporativo por email", async () => {
+  const reminder = await read("netlify/functions/investor-expiry-reminders.mjs");
+  assert.match(reminder, /sendEmail/);
+  assert.match(reminder, /Tu inversión requiere una decisión · BRAVA/);
+  assert.match(reminder, /https:\/\/bravaae\.com\/inversor\.html/);
+});

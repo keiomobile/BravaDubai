@@ -93,7 +93,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v52-2026-08-27-ai-commercial-routing";
+const SCHEMA_VERSION = "v53-2026-08-27-commercial-activity-timeline";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -118,6 +118,8 @@ async function ensureSchema() {
   await db.pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ip TEXT");
   for (const col of ["assigned_user_id INT", "next_action TEXT", "next_action_at TIMESTAMPTZ", "potential_value BIGINT DEFAULT 0", "lead_score INT DEFAULT 0", "ai_summary TEXT", "ai_reason TEXT", "ai_confidence INT DEFAULT 0", "classified_at TIMESTAMPTZ", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
     await db.pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS " + col);
+  await db.pool.query("CREATE TABLE IF NOT EXISTS lead_activities (\n  id BIGSERIAL PRIMARY KEY,lead_id TEXT NOT NULL,type TEXT NOT NULL,title TEXT,detail TEXT,scheduled_at TIMESTAMPTZ,completed_at TIMESTAMPTZ,actor_user_id INT,metadata JSONB DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_lead_activities_lead ON lead_activities(lead_id,created_at DESC)");
   await db.pool.query("CREATE TABLE IF NOT EXISTS ai_chat_log (id BIGSERIAL PRIMARY KEY, session_id TEXT, division TEXT, page TEXT, question TEXT, answer TEXT, ip TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
   for (const col of ["contact_name TEXT", "contact_email TEXT", "contact_phone TEXT", "intent TEXT", "status TEXT DEFAULT 'new'", "priority TEXT DEFAULT 'normal'", "assigned_user_id INT", "lead_id TEXT", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
     await db.pool.query("ALTER TABLE ai_chat_log ADD COLUMN IF NOT EXISTS " + col);
@@ -1149,6 +1151,9 @@ function leadFallbackClassification(l){
   const action=division==="realestate"?"Llamar para validar objetivo, presupuesto y plazo":(division==="garentto"?"Contactar para revisar inmueble y condiciones de renta":"Llamar para validar perfil, capital disponible y horizonte");
   return {score,priority:urgent?"ALTA":(score>=45?"MEDIA":"NORMAL"),summary:String(l.mensaje||l.situacion||l.notas||"Nuevo contacto comercial").replace(/\s+/g," ").slice(0,240),reason:"Clasificación inicial por datos de contacto, intención y urgencia detectada.",nextAction:action,nextActionAt:date,potentialValue:Number(l.potential_value||l.precio_pide||l.precioPide)||0,confidence:55,division};
 }
+async function logLeadActivity(leadId,type,title,detail,actorUserId,scheduledAt,metadata){
+  try{const [row]=await db.sql`INSERT INTO lead_activities(lead_id,type,title,detail,scheduled_at,actor_user_id,metadata) VALUES(${leadId},${type},${String(title||"").slice(0,180)},${String(detail||"").slice(0,3000)},${scheduledAt||null},${actorUserId||null},${JSON.stringify(metadata||{})}::jsonb) RETURNING id`;return row&&row.id;}catch(e){console.error("[lead-activity]",e&&e.message);return null;}
+}
 async function classifyAndRouteLead(leadId,useAi=true){
   const [l]=await db.sql`SELECT * FROM leads WHERE id=${leadId}`;if(!l)return null;
   let c=leadFallbackClassification(l);
@@ -1163,6 +1168,7 @@ async function classifyAndRouteLead(leadId,useAi=true){
   const eligible=staff.filter(u=>u.role==="superadmin"||!Array.isArray(u.divisiones)||!u.divisiones.length||u.divisiones.includes(c.division));
   const assignee=l.assigned_user_id||(eligible[0]&&eligible[0].id)||null;
   await db.sql`UPDATE leads SET prioridad=${c.priority},assigned_user_id=${assignee},next_action=CASE WHEN COALESCE(next_action,'')='' THEN ${c.nextAction} ELSE next_action END,next_action_at=CASE WHEN next_action_at IS NULL THEN ${c.nextActionAt} ELSE next_action_at END,potential_value=CASE WHEN COALESCE(potential_value,0)=0 THEN ${c.potentialValue} ELSE potential_value END,lead_score=${c.score},ai_summary=${c.summary},ai_reason=${c.reason},ai_confidence=${c.confidence},classified_at=NOW(),updated_at=NOW() WHERE id=${leadId}`;
+  await logLeadActivity(leadId,"ai_classification","Clasificación comercial actualizada",c.summary,null,null,{score:c.score,confidence:c.confidence,priority:c.priority,assignedUserId:assignee});
   if(assignee&&!l.assigned_user_id)await notify(assignee,"lead_assigned","Nuevo lead asignado · "+(l.nombre||"Contacto"),c.nextAction,leadId);
   return {...c,assignedUserId:assignee};
 }
@@ -1921,11 +1927,25 @@ export default async (req) => {
       const sys="Redacta un borrador comercial profesional de BRAVA. No inventes precios, rentabilidades, disponibilidad, compromisos ni datos. Debe sonar humano, breve y personalizado. Devuelve SOLO JSON con subject y body en texto plano. Para WhatsApp, body máximo 500 caracteres y subject vacío. El borrador será revisado por una persona antes de enviarse.";
       const ai=await anthropicMessages({model:"claude-haiku-4-5-20251001",max_tokens:500,system:sys,messages:[{role:"user",content:JSON.stringify({channel,nombre:l.nombre||"",division,intencion:l.situacion||"",mensaje:l.mensaje||"",resumen:l.ai_summary||"",proximaAccion:l.next_action||""})}]});
       if(ai.ok){try{const raw=(ai.data.content||[]).map(x=>x.text||"").join(""),m=raw.match(/\{[\s\S]*\}/),x=m&&JSON.parse(m[0]);if(x){subject=channel==="whatsapp"?"":String(x.subject||subject).slice(0,180);body=String(x.body||body).slice(0,2500);}}catch(e){}}
+      await logLeadActivity(l.id,"draft_created","Borrador de "+(channel==="email"?"email":"WhatsApp")+" preparado","Pendiente de revisión humana",user.id,null,{channel});
       return json({ok:true,channel,subject,body,to:channel==="email"?(l.email||""):(l.tel||""),requiresHumanReview:true});
+    }
+    if (seg[0] === "commercial" && seg[1] === "pipeline" && seg[2] && seg[3] === "activities" && method === "GET") {
+      if(!isInternal)return json({error:"Solo equipo interno"},403);const rows=await db.sql`SELECT a.*,u.name AS actor_name FROM lead_activities a LEFT JOIN usuarios u ON u.id=a.actor_user_id WHERE a.lead_id=${seg[2]} ORDER BY a.created_at DESC LIMIT 200`;return json({activities:rows.map(a=>({id:a.id,type:a.type,title:a.title||"Actividad",detail:a.detail||"",scheduledAt:a.scheduled_at||null,completedAt:a.completed_at||null,actorName:a.actor_name||"Sistema",metadata:a.metadata||{},createdAt:a.created_at}))});
+    }
+    if (seg[0] === "commercial" && seg[1] === "pipeline" && seg[2] && seg[3] === "activities" && !seg[4] && method === "POST") {
+      if(!isInternal)return json({error:"Solo equipo interno"},403);const b=await req.json().catch(()=>({})),types=["call","email","whatsapp","note","meeting","visit"],type=types.includes(b.type)?b.type:"note",title=String(b.title||({call:"Llamada",email:"Email",whatsapp:"WhatsApp",note:"Nota",meeting:"Reunión",visit:"Visita"}[type])).slice(0,180),detail=String(b.detail||"").trim().slice(0,3000),scheduledAt=b.scheduledAt||null;if(!detail&&!scheduledAt)return json({error:"Añade una nota o fecha"},400);
+      const id=await logLeadActivity(seg[2],type,title,detail,user.id,scheduledAt,{source:"crm"});
+      if(scheduledAt){const tid=uid("tsk");await db.sql`INSERT INTO tareas(id,titulo,tipo,fecha,estado,ref,notas) VALUES(${tid},${title},${type==="visit"?"Visita":"Seguimiento"},${String(scheduledAt).slice(0,10)},'Pendiente',${seg[2]},${detail})`;}
+      return json({ok:true,id});
+    }
+    if (seg[0] === "commercial" && seg[1] === "pipeline" && seg[2] && seg[3] === "activities" && seg[4] && seg[5] === "complete" && method === "POST") {
+      if(!isInternal)return json({error:"Solo equipo interno"},403);await db.sql`UPDATE lead_activities SET completed_at=NOW() WHERE id=${parseInt(seg[4],10)||0} AND lead_id=${seg[2]}`;return json({ok:true});
     }
     if (seg[0] === "commercial" && seg[1] === "pipeline" && seg[2] && method === "PUT") {
       if(!isInternal)return json({error:"Solo equipo interno"},403);const stages=["Nuevo","Contactado","Cualificado","Propuesta","Negociación","Ganado","Perdido"],b=await req.json().catch(()=>({})),[old]=await db.sql`SELECT * FROM leads WHERE id=${seg[2]}`;if(!old)return json({error:"Lead no encontrado"},404);const stage=stages.includes(b.stage)?b.stage:(old.estado_lead||"Nuevo"),assignee=b.assignedUserId?parseInt(b.assignedUserId,10):null,next=String(b.nextAction||"").slice(0,500),nextAt=b.nextActionAt||null,value=Math.max(0,Number(b.potentialValue)||0);
       await db.sql`UPDATE leads SET estado_lead=${stage},assigned_user_id=${assignee},next_action=${next},next_action_at=${nextAt},potential_value=${value},updated_at=NOW() WHERE id=${old.id}`;
+      const changes=[];if(stage!==old.estado_lead)changes.push("Etapa: "+old.estado_lead+" → "+stage);if(Number(assignee||0)!==Number(old.assigned_user_id||0))changes.push("Responsable actualizado");if(next!==String(old.next_action||"")||String(nextAt||"").slice(0,10)!==String(old.next_action_at||"").slice(0,10))changes.push("Próxima acción: "+(next||"sin definir"));if(value!==Number(old.potential_value||0))changes.push("Valor potencial actualizado");if(changes.length)await logLeadActivity(old.id,"pipeline_update","Oportunidad actualizada",changes.join(" · "),user.id,nextAt,{stage,assignedUserId:assignee,potentialValue:value});
       if(next&&nextAt&&(next!==String(old.next_action||"")||String(nextAt).slice(0,10)!==String(old.next_action_at||"").slice(0,10))){const tid=uid("tsk");await db.sql`INSERT INTO tareas(id,titulo,tipo,fecha,estado,ref,notas) VALUES(${tid},${next},'Lead',${String(nextAt).slice(0,10)},'Pendiente',${old.id},${"Pipeline · "+(old.nombre||"")})`;}
       return json({ok:true});
     }

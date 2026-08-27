@@ -142,10 +142,12 @@
   /* BRAVA OS · interfaz clara alineada con el CRM */
   :root{--bg:#F5F6F8;--panel:#FFFFFF;--panel2:#F1F3F5;--line:rgba(14,17,22,.10);--line2:rgba(14,17,22,.16);--ink:#0E1116;--mut:#6A7178;--faint:#9AA1A9;--green:#127A56;--green-d:#0B5E42;--gold:#8A6D3B;--r:16px}
   html{color-scheme:only light}
-  body{background-color:var(--bg);background-image:radial-gradient(circle at 82% -5%,rgba(18,122,86,.10),transparent 29%),linear-gradient(rgba(14,17,22,.023) 1px,transparent 1px),linear-gradient(90deg,rgba(14,17,22,.023) 1px,transparent 1px);background-size:auto,32px 32px,32px 32px;color:var(--ink)}
+  body{position:relative;background-color:var(--bg);background-image:radial-gradient(circle at 82% -5%,rgba(18,122,86,.10),transparent 29%),radial-gradient(circle at 7% 88%,rgba(138,109,59,.055),transparent 24%);color:var(--ink)}
+  body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url('/brand/brava-mark-color.png'),url('/brand/brava-mark-color.png');background-repeat:no-repeat;background-position:-55px 14%,calc(100% + 105px) 88%;background-size:240px auto,390px auto;opacity:.035;filter:grayscale(.15)}
+  #auth,#app{position:relative;z-index:1}
   ::selection{background:var(--ink);color:#fff}
-  #auth{background:radial-gradient(circle at 50% 12%,rgba(18,122,86,.12),transparent 31%),linear-gradient(rgba(14,17,22,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(14,17,22,.025) 1px,transparent 1px),var(--bg);background-size:auto,30px 30px,30px 30px}
-  .auth-card{position:relative;background:rgba(255,255,255,.94);border:1px solid rgba(14,17,22,.08);border-radius:24px;padding:40px 34px;box-shadow:0 40px 100px -55px rgba(14,17,22,.48),0 1px 0 #fff inset;overflow:hidden}
+  #auth{background:radial-gradient(circle at 50% 12%,rgba(18,122,86,.12),transparent 31%),linear-gradient(180deg,rgba(255,255,255,.20),transparent 62%)}
+  .auth-card{position:relative;background:rgba(255,255,255,.96);border:1px solid rgba(14,17,22,.07);border-radius:24px;padding:40px 34px;box-shadow:0 2px 0 #fff inset,0 10px 0 -6px rgba(14,17,22,.055),0 38px 80px -42px rgba(14,17,22,.46);overflow:hidden}
   .auth-card:before{content:"SECURE INVESTOR ACCESS";display:block;font-size:9px;font-weight:800;letter-spacing:.2em;color:var(--green);margin-bottom:22px;padding-left:18px;position:relative}
   .auth-card:after{content:"";position:absolute;left:34px;top:45px;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(18,122,86,.10),0 0 18px rgba(18,122,86,.35)}
   .auth-card .lg{height:32px;margin-bottom:24px}
@@ -155,10 +157,12 @@
   .field input,.field select,.field textarea{background:var(--bg);border-color:transparent;color:var(--ink);box-shadow:0 0 0 1px rgba(14,17,22,.055) inset}
   .field input:focus,.field select:focus,.field textarea:focus{background:#fff;border-color:var(--ink);box-shadow:0 0 0 3px rgba(14,17,22,.055)}
   .pass-wrap button{color:var(--mut)}
-  .btn{background:var(--ink);color:#fff;border-radius:10px;box-shadow:0 8px 22px -16px rgba(14,17,22,.7)}
-  .btn:hover:not(:disabled){background:#000;transform:translateY(-1px)}
-  .btn.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
-  .btn.ghost:hover{background:var(--ink);color:#fff}
+  .btn{background:linear-gradient(180deg,#20252c 0%,var(--ink) 100%);color:#fff;border:1px solid rgba(0,0,0,.28);border-radius:11px;box-shadow:0 5px 0 #050608,0 12px 22px -12px rgba(14,17,22,.72),0 1px 0 rgba(255,255,255,.18) inset;transform:translateY(0);transition:transform .15s,box-shadow .15s,background .15s}
+  .btn:hover:not(:disabled){background:linear-gradient(180deg,#292f37 0%,#11151a 100%);transform:translateY(-2px);box-shadow:0 7px 0 #050608,0 17px 26px -13px rgba(14,17,22,.76),0 1px 0 rgba(255,255,255,.2) inset}
+  .btn:active:not(:disabled){transform:translateY(4px);box-shadow:0 1px 0 #050608,0 6px 12px -8px rgba(14,17,22,.65)}
+  .btn.ghost{background:linear-gradient(180deg,#fff,#F1F3F5);color:var(--ink);border-color:var(--line2);box-shadow:0 4px 0 #D9DDE1,0 10px 20px -14px rgba(14,17,22,.45),0 1px 0 #fff inset}
+  .btn.ghost:hover{background:linear-gradient(180deg,#fff,#E9ECEF);color:var(--ink);box-shadow:0 6px 0 #D5D9DD,0 15px 24px -15px rgba(14,17,22,.5)}
+  .btn.ghost:active:not(:disabled){box-shadow:0 1px 0 #D5D9DD,0 5px 10px -8px rgba(14,17,22,.4)}
   .msg.ok{color:var(--green)}.msg.err{color:#A6303B}
   .supportbar{background:#F8EFDF;color:#6f470f;border-bottom:1px solid rgba(154,97,20,.16)}
   .top{background:rgba(255,255,255,.86);border-bottom-color:rgba(14,17,22,.07);box-shadow:0 10px 35px -32px rgba(14,17,22,.65)}
@@ -174,13 +178,13 @@
   h2.big{font-size:clamp(27px,4vw,38px);letter-spacing:-.035em;color:var(--ink)}
   .lead{color:var(--mut)}
   .kgrid{gap:15px}
-  .kbox{position:relative;background:rgba(255,255,255,.96);border-color:rgba(14,17,22,.07);box-shadow:0 22px 55px -48px rgba(14,17,22,.62);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s}
+  .kbox{position:relative;background:linear-gradient(145deg,#fff,#FAFBFC);border-color:rgba(14,17,22,.07);box-shadow:0 2px 0 #fff inset,0 7px 0 -4px rgba(14,17,22,.055),0 24px 48px -34px rgba(14,17,22,.42);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s}
   .kbox:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--green),transparent)}
-  .kbox:hover{transform:translateY(-3px);border-color:rgba(18,122,86,.18);box-shadow:0 30px 65px -45px rgba(14,17,22,.55)}
+  .kbox:hover{transform:translateY(-4px);border-color:rgba(18,122,86,.18);box-shadow:0 2px 0 #fff inset,0 10px 0 -5px rgba(18,122,86,.08),0 32px 58px -35px rgba(14,17,22,.48)}
   .kbox .k,.kpi .k,.sec h4,th{color:var(--faint)}
   .kbox .v,.kpi .v{font-variant-numeric:tabular-nums;color:var(--ink)}
   .prog{background:#E7EBE9}.prog i{background:linear-gradient(90deg,var(--green-d),#23A978);box-shadow:0 0 14px rgba(18,122,86,.3)}
-  .card,.opp,.ticket{background:rgba(255,255,255,.97);border-color:rgba(14,17,22,.075);box-shadow:0 24px 65px -55px rgba(14,17,22,.72)}
+  .card,.opp,.ticket{background:linear-gradient(145deg,#fff 0%,#FBFCFC 100%);border-color:rgba(14,17,22,.075);box-shadow:0 2px 0 #fff inset,0 7px 0 -4px rgba(14,17,22,.05),0 25px 55px -42px rgba(14,17,22,.48)}
   .card{transition:border-color .2s,box-shadow .2s}.card:hover{border-color:rgba(14,17,22,.13);box-shadow:0 28px 70px -54px rgba(14,17,22,.72)}
   .card-h,.sec,.r,td{border-color:rgba(14,17,22,.075)}
   .kpis{background:rgba(14,17,22,.075);border-color:rgba(14,17,22,.075)}.kpi{background:#fff}

@@ -51,6 +51,9 @@ test("socios e inversores reciben una invitación corporativa previsualizable", 
   ]);
   assert.match(api, /seg\[0\] === "socios".*seg\[2\] === "acceso"/s);
   assert.match(api, /portalAccessEmail/);
+  const emailTemplate = api.slice(api.indexOf("function emailWrap"), api.indexOf("function portalAccessEmail"));
+  assert.match(emailTemplate, /brava-investment-color\.png/);
+  assert.doesNotMatch(emailTemplate, /Brava CAPITAL/);
   assert.match(crm, /Vista previa del email/);
   assert.match(crm, /Preparar y enviar acceso/);
 });

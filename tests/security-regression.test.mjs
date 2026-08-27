@@ -72,8 +72,9 @@ test("el correo se sincroniza automáticamente y los formularios confirman recep
   assert.match(api, /Ficha de propiedad recibida/);
   assert.match(api, /Solicitud recibida · Brava Rent/);
   assert.match(api, /path === "mail\/status"/);
-  assert.match(crm, /Sincronización automática activa/);
-  assert.match(crm, /Estado del sistema/);
+  assert.match(crm, /Actualización automática/);
+  assert.match(crm, /Configuración de buzones/);
+  assert.doesNotMatch(crm, /id="mailSyncBtn"/);
 });
 
 test("los hitos del inversor generan aviso corporativo por email", async () => {

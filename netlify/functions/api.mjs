@@ -1,5 +1,5 @@
-Warning: truncated output (original token count: 87075)
-Total output lines: 3913
+Warning: truncated output (original token count: 88817)
+Total output lines: 3951
 
 import { getDatabase } from "@netlify/database";
 import { getStore } from "@netlify/blobs";
@@ -96,7 +96,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v49-2026-08-27-contextual-ai-chat";
+const SCHEMA_VERSION = "v50-2026-08-27-support-inbox";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -120,7 +120,10 @@ async function ensureSchema() {
   await db.pool.query("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS marca TEXT DEFAULT 'capital'");
   await db.pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ip TEXT");
   await db.pool.query("CREATE TABLE IF NOT EXISTS ai_chat_log (id BIGSERIAL PRIMARY KEY, session_id TEXT, division TEXT, page TEXT, question TEXT, answer TEXT, ip TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
+  for (const col of ["contact_name TEXT", "contact_email TEXT", "contact_phone TEXT", "intent TEXT", "status TEXT DEFAULT 'new'", "priority TEXT DEFAULT 'normal'", "assigned_user_id INT", "lead_id TEXT", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
+    await db.pool.query("ALTER TABLE ai_chat_log ADD COLUMN IF NOT EXISTS " + col);
   await db.pool.query("CREATE INDEX IF NOT EXISTS ix_ai_chat_ip ON ai_chat_log(ip,created_at)");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_ai_chat_session ON ai_chat_log(session_id,created_at)");
   await db.pool.query("ALTER TABLE propiedad_documentos ADD COLUMN IF NOT EXISTS compartido BOOLEAN DEFAULT FALSE");
   await db.pool.query("CREATE INDEX IF NOT EXISTS ix_leads_marca ON leads(marca)");
   await db.pool.query("CREATE INDEX IF NOT EXISTS ix_leads_ip ON leads(ip, created_at)");
@@ -1002,7 +1005,495 @@ function comunicacionRow(r){return{id:r.id,titulo:r.titulo||"",cuerpo:r.cuerpo||
 async function upsertComunicacion(c){
   await db.sql`INSERT INTO comunicaciones (id,titulo,cuerpo,tipo,audiencia,proyecto,fecha,publicada,autor)
     VALUES (${c.id},${c.titulo||""},${c.cuerpo||""},${c.tipo||"Novedad"},${c.audiencia||"todos"},${c.proyecto||""},${c.fecha||""},${c.publicada!==false},${c.autor||""})
-    ON CONFLICT (id) DO UPDATE SET titulo=EXCLUDED.titulo,cu…37075 tokens truncated…(buf) {
+    ON CONFLICT (id) DO UPDATE SET titulo=EXCLUDED.titulo,cuerpo=EXCLUDED.cuerpo,tipo=EXCLUDED.tipo,audiencia=EXCLUDED.audiencia,proyecto=EXCLUDED.proyecto,fecha=EXCLUDED.fecha,publicada=EXCLUDED.publicada`;
+}
+function promotorRow(r){return{id:r.id,nombre:r.nombre||"",logo:r.logo||"",pais:r.pais||"UAE",web:r.web||"",contacto:r.contacto||"",condiciones:r.condiciones||"",notas:r.notas||""};}
+async function upsertPromotor(p){
+  await db.sql`INSERT INTO promotores (id,nombre,logo,pais,web,contacto,condiciones,notas)
+    VALUES (${p.id},${p.nombre||""},${p.logo||""},${p.pais||"UAE"},${p.web||""},${p.contacto||""},${p.condiciones||""},${p.notas||""})
+    ON CONFLICT (id) DO UPDATE SET nombre=EXCLUDED.nombre,logo=EXCLUDED.logo,pais=EXCLUDED.pais,web=EXCLUDED.web,contacto=EXCLUDED.contacto,condiciones=EXCLUDED.condiciones,notas=EXCLUDED.notas`;
+}
+function proyectoRow(r){return{id:r.id,promotorId:r.promotor_id||"",promotorNombre:r.promotor_nombre||"",nombre:r.nombre||"",ubicacion:r.ubicacion||"",descripcion:r.descripcion||"",tipo:r.tipo||"",entrega:r.entrega||"",precioDesde:Number(r.precio_desde)||0,moneda:r.moneda||"AED",planPago:r.plan_pago||"",comisionPct:Number(r.comision_pct)||0,comisionColabPct:Number(r.comision_colab_pct)||0,estado:r.estado||"Disponible",publicado:!!r.publicado,destacado:!!r.destacado,imagenes:r.imagenes||[],unidades:r.unidades||[],notas:r.notas||"",obraPct:Number(r.obra_pct)||0,obraFase:r.obra_fase||"",obraActualizado:r.obra_actualizado||"",nombreEn:r.nombre_en||"",nombreAr:r.nombre_ar||"",descripcionCorta:r.descripcion_corta||"",descripcionCortaEn:r.descripcion_corta_en||"",descripcionCortaAr:r.descripcion_corta_ar||"",descripcionEn:r.descripcion_en||"",descripcionAr:r.descripcion_ar||"",planPagoEn:r.plan_pago_en||"",planPagoAr:r.plan_pago_ar||"",ubicacionEn:r.ubicacion_en||"",ubicacionAr:r.ubicacion_ar||""};}
+async function upsertProyecto(p){
+  /* Las imágenes viven en proyecto_imagenes (blobs); NO se tocan aquí para no pisarlas. */
+  const t = (s) => String(s == null ? "" : s).trim();
+  const moneda = MONEDAS_VALIDAS.indexOf(String(p.moneda || "AED").toUpperCase()) > -1 ? String(p.moneda).toUpperCase() : "AED";
+  const nombre = t(p.nombre), ubicacion = t(p.ubicacion), promotorNombre = t(p.promotorNombre), descripcion = t(p.descripcion), planPago = t(p.planPago);
+  let publicado = !!p.publicado;
+  /* Red de seguridad: no publicar sin cumplir la validación editorial, aunque llegue por /sync. */
+  if (publicado) {
+    let imgN = 0; try { const im = await proyImagenesList(p.id); imgN = (im || []).length; } catch (e) {}
+    if (validarProyectoPublicable(Object.assign({}, p, { moneda: moneda, planPago: planPago }), imgN).length) publicado = false;
+  }
+  await db.sql`INSERT INTO proyectos (id,promotor_id,promotor_nombre,nombre,ubicacion,descripcion,tipo,entrega,precio_desde,moneda,plan_pago,comision_pct,comision_colab_pct,estado,publicado,destacado,unidades,notas,obra_pct,obra_fase,obra_actualizado,nombre_en,nombre_ar,descripcion_corta,descripcion_corta_en,descripcion_corta_ar,descripcion_en,descripcion_ar,plan_pago_en,plan_pago_ar,ubicacion_en,ubicacion_ar)
+    VALUES (${p.id},${t(p.promotorId)},${promotorNombre},${nombre},${ubicacion},${descripcion},${t(p.tipo)},${t(p.entrega)},${p.precioDesde||0},${moneda},${planPago},${p.comisionPct||0},${p.comisionColabPct||0},${p.estado||"Disponible"},${publicado},${!!p.destacado},${JSON.stringify(p.unidades||[])}::jsonb,${p.notas||""},${p.obraPct||0},${p.obraFase||""},${p.obraActualizado||""},${t(p.nombreEn)},${t(p.nombreAr)},${t(p.descripcionCorta)},${t(p.descripcionCortaEn)},${t(p.descripcionCortaAr)},${t(p.descripcionEn)},${t(p.descripcionAr)},${t(p.planPagoEn)},${t(p.planPagoAr)},${t(p.ubicacionEn)},${t(p.ubicacionAr)})
+    ON CONFLICT (id) DO UPDATE SET promotor_id=EXCLUDED.promotor_id,promotor_nombre=EXCLUDED.promotor_nombre,nombre=EXCLUDED.nombre,ubicacion=EXCLUDED.ubicacion,descripcion=EXCLUDED.descripcion,tipo=EXCLUDED.tipo,entrega=EXCLUDED.entrega,precio_desde=EXCLUDED.precio_desde,moneda=EXCLUDED.moneda,plan_pago=EXCLUDED.plan_pago,comision_pct=EXCLUDED.comision_pct,comision_colab_pct=EXCLUDED.comision_colab_pct,estado=EXCLUDED.estado,publicado=EXCLUDED.publicado,destacado=EXCLUDED.destacado,unidades=EXCLUDED.unidades,notas=EXCLUDED.notas,obra_pct=EXCLUDED.obra_pct,obra_fase=EXCLUDED.obra_fase,obra_actualizado=EXCLUDED.obra_actualizado,nombre_en=EXCLUDED.nombre_en,nombre_ar=EXCLUDED.nombre_ar,descripcion_corta=EXCLUDED.descripcion_corta,descripcion_corta_en=EXCLUDED.descripcion_corta_en,descripcion_corta_ar=EXCLUDED.descripcion_corta_ar,descripcion_en=EXCLUDED.descripcion_en,descripcion_ar=EXCLUDED.descripcion_ar,plan_pago_en=EXCLUDED.plan_pago_en,plan_pago_ar=EXCLUDED.plan_pago_ar,ubicacion_en=EXCLUDED.ubicacion_en,ubicacion_ar=EXCLUDED.ubicacion_ar`;
+}
+/* Imágenes de un proyecto (desde su tabla), como [{id,url,portada}] ordenadas */
+async function proyImagenesList(pid){
+  try { const rows = await db.sql`SELECT id, is_portada FROM proyecto_imagenes WHERE proyecto_id = ${pid} ORDER BY is_portada DESC, orden ASC, created_at ASC`;
+    return rows.map(r => ({ id:r.id, url:"/api/proy-img/"+r.id, portada:!!r.is_portada })); } catch (e) { return []; }
+}
+async function proyImagenesMap(){
+  const map = {};
+  try { const rows = await db.sql`SELECT id, proyecto_id, is_portada, orden FROM proyecto_imagenes ORDER BY is_portada DESC, orden ASC, created_at ASC`;
+    for (const r of rows){ (map[r.proyecto_id] = map[r.proyecto_id] || []).push({ id:r.id, url:"/api/proy-img/"+r.id, portada:!!r.is_portada }); } } catch (e) {}
+  return map;
+}
+const DEUDAS_REALES = [];
+/* Documentos reales del Drive → almacenamiento privado + fichas de inversores.
+   Gateado por meta.seed_invdocs_v2. General → visible para todos los co-inversores. */
+async function seedInvDocsReal(){
+  let done; try { done = await db.sql`SELECT v FROM meta WHERE k = 'seed_invdocs_v2'`; } catch (e) { return; }
+  if (done && done[0]) return;
+  try {
+    const invs = await db.sql`SELECT id, email FROM inversiones`;
+    for (const doc of (SEED_DOCS || [])) {
+      const buf = Buffer.from(doc.b64, "base64");
+      if (doc.target === "general") {
+        const key = "seed/" + doc.id;
+        try { await imgOrDocStoreSet(key, buf); } catch (e) { continue; }
+        for (const iv of invs) {
+          const rid = "sdoc-" + doc.id + "-" + iv.id;
+          await db.sql`INSERT INTO inversor_documentos (id,inversion_id,email,nombre,categoria,blob_key,tipo,size,subido_por) VALUES (${rid},${iv.id},${iv.email||""},${doc.nombre},${doc.categoria},${key},${doc.tipo||"application/pdf"},${buf.length},'Brava (Drive)') ON CONFLICT (id) DO NOTHING`;
+        }
+      } else {
+        const target = invs.find(x => x.id === doc.target);
+        if (!target) continue;
+        const key = "seed/" + doc.id;
+        try { await imgOrDocStoreSet(key, buf); } catch (e) { continue; }
+        const rid = "sdoc-" + doc.id;
+        await db.sql`INSERT INTO inversor_documentos (id,inversion_id,email,nombre,categoria,blob_key,tipo,size,subido_por) VALUES (${rid},${target.id},${target.email||""},${doc.nombre},${doc.categoria},${key},${doc.tipo||"application/pdf"},${buf.length},'Brava (Drive)') ON CONFLICT (id) DO NOTHING`;
+      }
+    }
+    await db.sql`INSERT INTO meta (k,v) VALUES ('seed_invdocs_v2','1') ON CONFLICT (k) DO NOTHING`;
+  } catch (e) { /* no fatal */ }
+}
+async function imgOrDocStoreSet(key, buf){ return docStore().set(key, buf); }
+/* Enriquecimiento de datos reales de contratos desde el Drive (documentos, unidades,
+   envelopes DocuSign, domicilios). Gateado por meta.seed_contr_enrich_v1. */
+async function seedContratosEnrich(){ return; }
+async function seedDeudasReal(){
+  const done = await db.sql`SELECT v FROM meta WHERE k = 'seed_deudas_v2'`;
+  if (done[0]) return;
+  for (const d of DEUDAS_REALES) { await upsertDeuda(d); }
+  for (const k of ['seed_deudas_v1','seed_deudas_v2']) {
+    try { await db.sql`INSERT INTO meta (k,v) VALUES (${k},'1') ON CONFLICT (k) DO NOTHING`; } catch (e) {}
+  }
+}
+
+async function seedAgentesReal(){
+  const done = await db.sql`SELECT v FROM meta WHERE k = 'seed_colab_agentes_v1'`;
+  if (done[0]) return;
+  for (const a of AGENTES_REALES) {
+    await upsertCo({
+      id: "co-" + a.id, nombre: a.nombre, tel: a.telefono, email: a.email, perfil: a.rol,
+      zona: a.nacionalidad || "UAE", estadoCol: a.estado === "Inactivo" ? "Pendiente" : "Activo", marca: "realestate",
+      notas: a.notas, tipo: "Agente", documento: a.documento, nacionalidad: a.nacionalidad,
+      modeloComision: a.modelo, tarifa: a.tarifa, moneda: a.moneda || "USD",
+      splitBrava: a.splitBrava, splitEquipo: a.splitEquipo, reportaA: a.reportaA,
+      fechaInicio: a.fechaInicio, condiciones: a.condiciones,
+    });
+  }
+  try { await db.sql`INSERT INTO meta (k,v) VALUES ('seed_colab_agentes_v1','1') ON CONFLICT (k) DO NOTHING`; } catch (e) {}
+}
+
+/* ---------- Tesorería (libro de caja multidivisa) ---------- */
+/* Capital fundacional realmente desembolsado (240.000 € de los 500.000 nominales):
+   4 socios inversores × 50.000 € + 4 fundadores/operadores × 10.000 €. Más los
+   tickets de co-inversión cobrados (ingresos) y gastos documentados. Gateado por
+   meta.seed_tesoreria_v1. Todo editable después desde el CRM. */
+const TES_MOVS = [];
+/* Merge idempotente: añade los movimientos que falten por id, sin borrar los
+   que el usuario haya editado/creado. Gate v2 para reejecutar tras ampliar la lista. */
+/* Reconcilia los movimientos gestionados por la semilla (ids con prefijo 'tm-')
+   dejándolos exactamente igual a TES_MOVS, y conserva los que el usuario haya
+   creado a mano (ids con otro formato, p.ej. 'tm_xxxx'). Gate v5. */
+async function seedTesoreriaReal(){
+  const done = await db.sql`SELECT v FROM meta WHERE k = 'seed_tesoreria_v5'`;
+  if (done[0]) return;
+  const [row] = await db.sql`SELECT movimientos FROM tesoreria WHERE id = 1`;
+  const prev = (row && Array.isArray(row.movimientos)) ? row.movimientos : [];
+  const seedManaged = (m) => m && typeof m.id === "string" && m.id.indexOf("tm-") === 0;
+  const userMovs = prev.filter(m => !seedManaged(m));   // conserva los creados a mano
+  const movs = userMovs.concat(TES_MOVS);               // resto = lista canónica de la semilla
+  await db.sql`UPDATE tesoreria SET movimientos = ${JSON.stringify(movs)}::jsonb, fondos = 240000 WHERE id = 1`;
+  for (const k of ['seed_tesoreria_v1','seed_tesoreria_v2','seed_tesoreria_v3','seed_tesoreria_v4','seed_tesoreria_v5']) {
+    try { await db.sql`INSERT INTO meta (k,v) VALUES (${k},'1') ON CONFLICT (k) DO NOTHING`; } catch (e) {}
+  }
+}
+async function upsertTarea(t){
+  await db.sql`INSERT INTO tareas (id,titulo,tipo,fecha,estado,ref,notas)
+    VALUES (${t.id},${t.titulo||""},${t.tipo||""},${t.fecha||""},${t.estado||"Pendiente"},${t.ref||""},${t.notas||""})
+    ON CONFLICT (id) DO UPDATE SET titulo=EXCLUDED.titulo,tipo=EXCLUDED.tipo,fecha=EXCLUDED.fecha,estado=EXCLUDED.estado,ref=EXCLUDED.ref,notas=EXCLUDED.notas`;
+}
+function scoreLead(l){
+  let sc=0;
+  if(l.situacion==="Venta urgente"||l.situacion==="Cargas o embargo"||l.situacion==="Cargas / embargo")sc+=2;
+  if(["Embargo","Hipoteca pendiente","Deudas comunidad / IBI","Proindiviso"].includes(l.cargas))sc+=1;
+  if(l.estado==="A reformar")sc+=1;
+  const pv=parseInt(String(l.precioPide||"").replace(/[^0-9]/g,""),10)||0;
+  const market=parseInt(String(l.valorMercado||"").replace(/[^0-9]/g,""),10)||0;
+  const ratio=pv&&market?pv/market:0;
+  if(ratio&&ratio<=0.75)sc+=3;else if(ratio&&ratio<=0.85)sc+=2;else if(ratio&&ratio<=0.95)sc+=1;
+  return sc>=4?"ALTA - Oportunidad":sc>=2?"MEDIA":"NORMAL";
+}
+
+/* ============================================================
+   HANDLER
+   ============================================================ */
+export default async (req) => {
+  const url = new URL(req.url);
+  const path = url.pathname.replace(/^\/api\/?/, "").replace(/\/$/, "");
+  const method = req.method;
+  const seg = path.split("/");
+  try {
+    /* PING (público, ultraligero): 200 sin tocar BD. Sirve para "¿hay servidor?"
+       sin generar 401 ni ejecutar el diagnóstico completo en cada carga. */
+    if (path === "ping") return json({ ok: true });
+    /* Estado público mínimo: no expone usuarios, variables ni realiza escrituras. */
+    if (path === "health") return json({ ok: true, service: "brava-api" });
+    /* El antiguo diagnóstico profundo queda inaccesible hasta moverlo a una ruta
+       administrativa autenticada. */
+    if (false && path === "health") {
+      const out = { ok: true, pasos: {} };
+      try { await ensureSchema(); out.pasos.esquema = "ok"; }
+      catch (e) { out.ok = false; out.pasos.esquema = "ERROR: " + String(e && e.message || e); }
+      try {
+        const [u] = await db.sql`SELECT COUNT(*)::int AS n FROM usuarios`;
+        const [o] = await db.sql`SELECT COUNT(*)::int AS n FROM operaciones`;
+        const [ad] = await db.sql`SELECT username, role FROM usuarios WHERE username = 'jesusleon@keio.es'`;
+        out.usuarios = u.n; out.operaciones = o.n; out.admin = ad || "NO EXISTE";
+      } catch (e) { out.ok = false; out.pasos.consulta = "ERROR: " + String(e && e.message || e); }
+      try { await runCleanupOnce(); out.pasos.limpieza = "ok"; }
+      catch (e) { out.pasos.limpieza = "ERROR: " + String(e && e.message || e); }
+      /* Prueba real de almacenamiento de imágenes (Netlify Blobs): escribe, lee y borra */
+      try {
+        const k = "healthcheck/ping.txt";
+        await imgStore().set(k, "ok");
+        const v = await imgStore().get(k, { type: "text" });
+        await imgStore().delete(k);
+        out.pasos.imagenes = (v === "ok") ? "ok" : "ERROR: lectura inesperada";
+        if (v !== "ok") out.ok = false;
+      } catch (e) { out.ok = false; out.pasos.imagenes = "ERROR: " + String(e && e.message || e); }
+      /* Prueba real de crear una propiedad-borrador (igual que el asistente, con lat/lng vacíos) y borrarla */
+      try {
+        const tid = "healthcheck_" + Date.now();
+        await db.sql`INSERT INTO propiedades (id,ref,estado,operacion,tipo_inmueble,precio,lat,lng,caracteristicas,comercial)
+          VALUES (${tid},'HC-TEST','Borrador','Venta','Piso',0,${null},${null},'[]'::jsonb,'{}'::jsonb)`;
+        await db.sql`DELETE FROM propiedades WHERE id = ${tid}`;
+        out.pasos.crearPropiedad = "ok";
+      } catch (e) { out.ok = false; out.pasos.crearPropiedad = "ERROR: " + String(e && e.message || e); }
+      /* Estado de las variables de entorno clave (sin revelar su valor) */
+      const iaVarName = process.env.ANTHROPIC_API_KEY ? "ANTHROPIC_API_KEY" : (process.env.ANTHOROPIC_API_KEY ? "ANTHOROPIC_API_KEY (typo)" : null);
+      out.env = {
+        baseDatos: (out.pasos.esquema === "ok") ? "conectada" : (!!(process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL) ? "configurada" : "FALTA"),
+        ia: !!(process.env.ANTHROPIC_API_KEY||process.env.ANTHOROPIC_API_KEY) ? "configurada" : "FALTA",
+        email: !!process.env.RESEND_API_KEY ? "configurada" : "(sin email)",
+      };
+      /* Diagnóstico de IA: variable usada + última llamada registrada + (opcional) prueba real con ?probe=ia */
+      out.ia = { configurada: !!(process.env.ANTHROPIC_API_KEY||process.env.ANTHOROPIC_API_KEY), variable: iaVarName, ultimaLlamada: LAST_AI_DIAG };
+      if (out.ia.configurada && (url.searchParams.get("probe") === "ia" || url.searchParams.get("probe") === "1")) {
+        try {
+          const pr = await anthropicMessages({ model: "claude-haiku-4-5-20251001", max_tokens: 20, system: "Responde solo con un JSON array.", messages: [{ role: "user", content: "Devuelve exactamente [\"ok\"] como array JSON." }] });
+          if (pr.ok && pr.data && Array.isArray(pr.data.content)) {
+            const t = pr.data.content.map(c => c.text || "").join("");
+            out.ia.prueba = /ok/i.test(t) ? "válida" : ("respuesta inesperada: " + t.slice(0, 80));
+          } else {
+            out.ia.prueba = "ERROR: " + String(pr.error || "desconocido").slice(0, 160) + (pr.status ? (" (HTTP " + pr.status + ")") : "");
+          }
+        } catch (e) { out.ia.prueba = "ERROR: " + String(e && e.message || e).slice(0, 160); }
+      }
+      return json(out);
+    }
+
+    await ensureInit();
+
+    /* LOGIN */
+    if (path === "login" && method === "POST") {
+      const body0 = await req.json();
+      const username = String(body0.username || "").trim();
+      const password = body0.password;
+      /* Email/usuario insensible a mayúsculas y espacios: evita fallos de login por
+         teclear el correo con mayúsculas o con un espacio al final. */
+      const rows = await db.sql`SELECT * FROM usuarios WHERE LOWER(username) = LOWER(${username}) AND activo = TRUE`;
+      const u = rows[0];
+      /* bloqueo temporal tras varios intentos fallidos */
+      if (u && u.locked_until && new Date(u.locked_until) > new Date()) {
+        return json({ error: "Cuenta bloqueada temporalmente por seguridad. Inténtalo de nuevo en unos minutos." }, 429);
+      }
+      if (!u || !verifyPassword(password || "", u.password_hash)) {
+        if (u) {
+          const fails = (u.failed_attempts || 0) + 1;
+          const lock = fails >= 5 ? new Date(Date.now() + 15*60*1000).toISOString() : null;
+          try { await db.sql`UPDATE usuarios SET failed_attempts = ${fails}, locked_until = ${lock} WHERE id = ${u.id}`; } catch (e) {}
+        }
+        return json({ error: "Credenciales incorrectas" }, 401);
+      }
+      if (u.failed_attempts) { try { await db.sql`UPDATE usuarios SET failed_attempts = 0, locked_until = NULL WHERE id = ${u.id}`; } catch (e) {} }
+      const token = newToken();
+      const expires = new Date(Date.now() + 1000*60*60*24*7);
+      await db.sql`INSERT INTO sessions (token,user_id,expires_at) VALUES (${token},${u.id},${expires.toISOString()})`;
+      return json({ token, user: { username:u.username, role:u.role, name:u.name, avatar:u.avatar, divisiones: u.divisiones || [], emailVerified: u.email_verified !== false } });
+    }
+
+    /* LEAD PÚBLICO (web) — se etiqueta con la marca de la web de origen (capital · realestate · garentto) */
+    if (path === "lead-web" && method === "POST") {
+      const body = await req.json();
+      /* Límite antiabuso por IP: máx 20 contactos/día */
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-nf-client-connection-ip") || "";
+      if (ip) { try { const [c] = await db.sql`SELECT COUNT(*)::int AS n FROM leads WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '1 day'`; if (c && c.n >= 20) return json({ error: "Has enviado demasiadas solicitudes. Inténtalo más tarde." }, 429); } catch (e) {} }
+      const id = uid("ld");
+      const marca = ["capital","realestate","garentto"].indexOf(body.marca) > -1 ? body.marca : "capital";
+      const cap = (s, n) => String(s || "").slice(0, n);
+      const lead = {
+        id, nombre: cap(body.nombre||body.name, 120), tel: cap(body.telefono||body.tel, 40), email: cap(body.email, 160), mensaje: cap(body.mensaje, 2000),
+        situacion: cap(body.situacion, 80), direccion: cap(body.direccion, 200), tipo: cap(body.tipo, 60), metros: parseInt(body.metros||0,10)||0, zona: cap(body.zona, 120),
+        estado: cap(body.estado, 80), cargas: cap(body.cargas, 200), precioPide: parseInt(String(body.precio||body.precioPide||"").replace(/[^0-9]/g,""),10)||0,
+        valorMercado: body.valorMercado||0, oferta: cap(body.oferta_estimada||body.oferta, 120), canal: "Web",
+        fecha: new Date().toISOString().slice(0,10), estadoLead: "Nuevo", origen: cap(body.origen||"Web", 120), marca, ip, notas: cap(body.notas, …28817 tokens truncated…headers.get("authorization") || "").replace(/^Bearer /i, "");
+        try { await db.sql`DELETE FROM sessions WHERE user_id = ${user.id} AND token <> ${tok}`; } catch (e) {}
+      }
+      return json({ ok: true });
+    }
+    /* RGPD: exportar mis datos personales */
+    if (path === "mis-datos" && method === "GET") {
+      const [u] = await db.sql`SELECT username, name, apellidos, telefono, tipo, consent, created_at FROM usuarios WHERE id = ${user.id}`;
+      const props = await db.sql`SELECT id, ref, titulo, estado, operacion, tipo_inmueble, municipio, precio, created_at FROM propiedades WHERE owner_id = ${user.id}`;
+      const leads = await db.sql`SELECT l.nombre, l.tel, l.email, l.created_at, p.ref FROM propiedad_leads l JOIN propiedades p ON p.id = l.propiedad_id WHERE p.owner_id = ${user.id}`;
+      return new Response(JSON.stringify({ cuenta: u, propiedades: props, solicitudes: leads, exportado: new Date().toISOString() }, null, 2), { status: 200, headers: { "content-type": "application/json", "content-disposition": "attachment; filename=\"mis-datos-vlc.json\"" } });
+    }
+    /* RGPD: eliminar mi cuenta y mis datos */
+    if (path === "mi-cuenta" && method === "DELETE") {
+      if (user.role !== "cliente") return json({ error: "Solo las cuentas de propietario pueden eliminarse desde aquí" }, 403);
+      const props = await db.sql`SELECT id FROM propiedades WHERE owner_id = ${user.id}`;
+      for (const p of props) {
+        const imgs = await db.sql`SELECT blob_key FROM propiedad_imagenes WHERE propiedad_id = ${p.id}`;
+        for (const im of imgs) { try { await imgStore().delete(im.blob_key); } catch (e) {} }
+        const docs = await db.sql`SELECT blob_key FROM propiedad_documentos WHERE propiedad_id = ${p.id}`;
+        for (const d of docs) { try { await docStore().delete(d.blob_key); } catch (e) {} }
+      }
+      await db.sql`DELETE FROM propiedades WHERE owner_id = ${user.id}`;
+      await db.sql`DELETE FROM sessions WHERE user_id = ${user.id}`;
+      await db.sql`DELETE FROM usuarios WHERE id = ${user.id}`;
+      return json({ ok: true });
+    }
+    /* Feed de exportación de propiedades publicadas (preparado para portales externos) */
+    if (path === "admin/export/propiedades.json" && method === "GET") {
+      if (!isInternal) return json({ error: "Sin permiso" }, 403);
+      const rows = await db.sql`SELECT * FROM propiedades WHERE estado = 'Publicada' ORDER BY updated_at DESC LIMIT 2000`;
+      const ids = rows.map(r => r.id);
+      let imgs = [];
+      if (ids.length) imgs = await db.sql`SELECT propiedad_id, id FROM propiedad_imagenes WHERE propiedad_id = ANY(${ids}) ORDER BY is_portada DESC, orden ASC`;
+      const byProp = {}; for (const im of imgs) { (byProp[im.propiedad_id] = byProp[im.propiedad_id] || []).push(url.origin + "/api/img/" + im.id); }
+      const feed = rows.map(r => ({ ref: r.ref, url: url.origin + "/inmueble/" + encodeURIComponent(r.slug || r.id), operacion: r.operacion, tipo: r.tipo_inmueble, titulo: r.titulo, descripcion: r.descripcion, precio: Number(r.precio) || 0, moneda: r.moneda, municipio: r.municipio, provincia: r.provincia, cp: r.cp, habitaciones: r.habitaciones, banos: r.banos, superficie: r.sup_construida, caracteristicas: r.caracteristicas || [], imagenes: byProp[r.id] || [] }));
+      return new Response(JSON.stringify({ generado: new Date().toISOString(), total: feed.length, propiedades: feed }, null, 2), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    /* Notificaciones del usuario */
+    if (path === "notificaciones" && method === "GET") {
+      const rows = await db.sql`SELECT id, tipo, titulo, cuerpo, propiedad_id, leida, created_at FROM notificaciones WHERE user_id = ${user.id} ORDER BY created_at DESC LIMIT 50`;
+      return json({ notificaciones: rows });
+    }
+    if (seg[0] === "notificaciones" && seg[1] === "leidas" && method === "POST") {
+      await db.sql`UPDATE notificaciones SET leida = TRUE WHERE user_id = ${user.id}`;
+      return json({ ok: true });
+    }
+
+    if (path === "logout" && method === "POST") {
+      const auth = req.headers.get("authorization") || "";
+      const token = auth.replace(/^Bearer\s+/i, "").trim();
+      await db.sql`DELETE FROM sessions WHERE token = ${token}`;
+      return json({ ok: true });
+    }
+
+    /* CAMBIAR MI CONTRASEÑA */
+    if (path === "change-password" && method === "POST") {
+      const { actual, nueva } = await req.json();
+      const rows = await db.sql`SELECT * FROM usuarios WHERE id = ${user.id}`;
+      if (!rows[0] || !verifyPassword(actual||"", rows[0].password_hash)) return json({ error: "La contraseña actual no es correcta" }, 400);
+      if (!nueva || nueva.length < 6) return json({ error: "La nueva contraseña debe tener al menos 6 caracteres" }, 400);
+      await db.sql`UPDATE usuarios SET password_hash = ${hashPassword(nueva)} WHERE id = ${user.id}`;
+      const tok = (req.headers.get("authorization") || "").replace(/^Bearer /i, "");
+      try { await db.sql`DELETE FROM sessions WHERE user_id = ${user.id} AND token <> ${tok}`; } catch (e) {}
+      return json({ ok: true });
+    }
+
+    /* ============================================================
+       PORTAL INMOBILIARIO — propiedades (autenticado)
+       ============================================================ */
+    async function loadProp(id){ const r = await db.sql`SELECT * FROM propiedades WHERE id = ${id}`; return r[0] || null; }
+    function canSeeProp(pr){ return isInternal || pr.owner_id === user.id; }
+
+    /* Solicitudes (leads) recibidas en las propiedades del propietario */
+    if (path === "mis-solicitudes" && method === "GET") {
+      /* El propietario NO recibe datos de contacto (los gestiona el equipo de Brava).
+         Solo información general: que ha habido interés, cuándo y en qué propiedad. */
+      const rows = await db.sql`SELECT l.id, l.nombre, l.mensaje, l.fecha_visita, l.franja, l.estado, l.created_at, p.titulo AS prop_titulo, p.ref AS prop_ref, p.id AS prop_id
+        FROM propiedad_leads l JOIN propiedades p ON p.id = l.propiedad_id WHERE p.owner_id = ${user.id} ORDER BY l.created_at DESC LIMIT 200`;
+      const leads = rows.map(l => ({
+        id: l.id, nombre: (String(l.nombre||"").trim().split(/\s+/)[0] || "Un interesado"),
+        mensaje: l.mensaje || "", pidioVisita: !!l.fecha_visita, estado: l.estado || "Nuevo",
+        propTitulo: l.prop_titulo || l.prop_ref || "", propId: l.prop_id, fecha: l.created_at,
+      }));
+      return json({ leads });
+    }
+
+    /* ADMIN — Solicitudes del portal (property leads): listar y gestionar (equipo interno) */
+    if (path === "prop-leads" && method === "GET" && isInternal) {
+      const rows = await db.sql`SELECT l.*, p.titulo AS prop_titulo, p.ref AS prop_ref, p.municipio AS prop_muni, p.operacion AS prop_op
+        FROM propiedad_leads l JOIN propiedades p ON p.id = l.propiedad_id ORDER BY (l.estado='Nuevo') DESC, l.created_at DESC LIMIT 500`;
+      const leads = rows.map(l => ({ id:l.id, propId:l.propiedad_id, propTitulo:l.prop_titulo||l.prop_ref, propRef:l.prop_ref, propMuni:l.prop_muni, propOp:l.prop_op,
+        nombre:l.nombre, tel:l.tel, email:l.email, mensaje:l.mensaje, fechaVisita:l.fecha_visita, franja:l.franja, origen:l.origen, estado:l.estado||"Nuevo", agenteId:l.agente_id, createdAt:l.created_at }));
+      return json({ leads });
+    }
+    if (seg[0] === "prop-leads" && seg[1] && method === "POST" && isInternal) {
+      const b = await req.json();
+      const [l] = await db.sql`SELECT * FROM propiedad_leads WHERE id = ${seg[1]}`;
+      if (!l) return json({ error: "Solicitud no encontrada" }, 404);
+      const PL_ESTADOS = ["Nuevo","Contactado","Visita agendada","Visitado","En negociación","Ganado","Descartado"];
+      const estado = PL_ESTADOS.includes(b.estado) ? b.estado : l.estado;
+      const agenteId = b.agenteId != null ? (num(b.agenteId) || null) : l.agente_id;
+      await db.sql`UPDATE propiedad_leads SET estado = ${estado}, agente_id = ${agenteId} WHERE id = ${l.id}`;
+      return json({ ok: true });
+    }
+
+    /* ADMIN — Resumen de Brava Real Estate (equipo interno) */
+    if (path === "re/analitica" && method === "GET" && isInternal) {
+      const props = await db.sql`SELECT estado FROM propiedades`;
+      const porEstado = {}; let pub = 0, pend = 0, cerr = 0;
+      for (const p of props) { porEstado[p.estado] = (porEstado[p.estado] || 0) + 1;
+        if (p.estado === "Publicada") pub++;
+        else if (["Pendiente de revisión","En revisión","Cambios solicitados","Aprobada","Programada"].indexOf(p.estado) > -1) pend++;
+        else if (["Vendida","Alquilada"].indexOf(p.estado) > -1) cerr++; }
+      const [ln] = await db.sql`SELECT COUNT(*)::int AS n FROM propiedad_leads WHERE estado = 'Nuevo'`;
+      const [lt] = await db.sql`SELECT COUNT(*)::int AS n FROM propiedad_leads`;
+      const [vn] = await db.sql`SELECT COUNT(*)::int AS n FROM propiedad_visitas WHERE estado IN ('Programada','Confirmada') AND (fecha IS NULL OR fecha >= CURRENT_DATE)`;
+      const [oa] = await db.sql`SELECT COUNT(*)::int AS n FROM propiedad_ofertas WHERE estado IN ('Presentada','Contraofertada')`;
+      return json({ total: props.length, publicadas: pub, pendientes: pend, cerradas: cerr, porEstado,
+        leadsNuevos: ln ? ln.n : 0, leadsTotal: lt ? lt.n : 0, visitasProximas: vn ? vn.n : 0, ofertasActivas: oa ? oa.n : 0 });
+    }
+    /* CONTRATOS GENERADOS — guardar/listar/consultar/borrar (equipo interno) */
+    if (path === "contratos" && method === "GET" && isInternal) {
+      const rows = await db.sql`SELECT id, tipo, titulo, contraparte, ref, propiedad_id, creado_por, created_at FROM contratos_generados ORDER BY created_at DESC LIMIT 300`;
+      return json({ contratos: rows.map(r => ({ id: r.id, tipo: r.tipo, titulo: r.titulo, contraparte: r.contraparte, ref: r.ref, propiedadId: r.propiedad_id, creadoPor: r.creado_por, createdAt: r.created_at })) });
+    }
+    if (path === "contratos" && method === "POST" && isInternal) {
+      const b = await req.json();
+      if (!b.html || !b.tipo) return json({ error: "Faltan datos del contrato" }, 400);
+      const id = uid("ctr");
+      await db.sql`INSERT INTO contratos_generados (id,tipo,titulo,contraparte,ref,propiedad_id,html,creado_por)
+        VALUES (${id},${b.tipo},${String(b.titulo||"").slice(0,200)},${String(b.contraparte||"").slice(0,160)},${String(b.ref||"").slice(0,80)},${b.propiedadId||null},${String(b.html||"").slice(0,200000)},${user.name})`;
+      return json({ ok: true, id });
+    }
+    if (seg[0] === "contratos" && seg[1] && method === "GET" && isInternal) {
+      const [r] = await db.sql`SELECT * FROM contratos_generados WHERE id = ${seg[1]}`;
+      if (!r) return json({ error: "No encontrado" }, 404);
+      return json({ contrato: { id: r.id, tipo: r.tipo, titulo: r.titulo, contraparte: r.contraparte, ref: r.ref, html: r.html, creadoPor: r.creado_por, createdAt: r.created_at } });
+    }
+    if (seg[0] === "contratos" && seg[1] && method === "DELETE" && isInternal) {
+      await db.sql`DELETE FROM contratos_generados WHERE id = ${seg[1]}`;
+      return json({ ok: true });
+    }
+    /* ADMIN — Agenda de visitas próximas (equipo interno) */
+    if (path === "prop-agenda" && method === "GET" && isInternal) {
+      const rows = await db.sql`SELECT v.id, v.propiedad_id, v.interesado, v.tel, v.fecha, v.hora, v.estado, v.resultado, u.name AS agente_nombre, p.titulo AS prop_titulo, p.ref AS prop_ref, p.municipio AS prop_muni
+        FROM propiedad_visitas v JOIN propiedades p ON p.id = v.propiedad_id LEFT JOIN usuarios u ON u.id = v.agente_id
+        WHERE v.estado IN ('Programada','Confirmada') AND (v.fecha IS NULL OR v.fecha >= CURRENT_DATE - INTERVAL '1 day')
+        ORDER BY v.fecha ASC NULLS LAST, v.hora ASC LIMIT 200`;
+      const visitas = rows.map(v => ({ id:v.id, propId:v.propiedad_id, propTitulo:v.prop_titulo||v.prop_ref, propMuni:v.prop_muni, interesado:v.interesado, tel:v.tel, fecha:v.fecha?String(v.fecha).slice(0,10):"", hora:v.hora||"", estado:v.estado, agenteNombre:v.agente_nombre||"" }));
+      return json({ visitas });
+    }
+
+    /* ADMIN — Bandeja de mensajes: todas las conversaciones propietario↔equipo */
+    if (path === "prop-mensajes" && method === "GET" && isInternal) {
+      const rows = await db.sql`
+        SELECT p.id AS prop_id, p.titulo, p.ref, p.owner_id, mx.last_at, mx.unread, lm.texto AS last_texto, lm.autor_rol AS last_rol, lm.autor_nombre AS last_nombre
+        FROM (
+          SELECT propiedad_id, MAX(created_at) AS last_at,
+            COUNT(*) FILTER (WHERE autor_rol <> 'equipo' AND autor_rol <> 'admin' AND autor_rol <> 'superadmin' AND leido_por_equipo = FALSE) AS unread
+          FROM propiedad_mensajes GROUP BY propiedad_id
+        ) mx
+        JOIN propiedades p ON p.id = mx.propiedad_id
+        LEFT JOIN LATERAL (SELECT texto, autor_rol, autor_nombre FROM propiedad_mensajes m2 WHERE m2.propiedad_id = mx.propiedad_id ORDER BY created_at DESC LIMIT 1) lm ON TRUE
+        ORDER BY mx.last_at DESC LIMIT 200`;
+      let totalUnread = 0;
+      const convs = rows.map(r => { const u = Number(r.unread) || 0; totalUnread += u; return { propId: r.prop_id, titulo: r.titulo || r.ref || "Propiedad", ref: r.ref, lastTexto: r.last_texto || "", lastRol: r.last_rol || "", lastNombre: r.last_nombre || "", lastAt: r.last_at, unread: u }; });
+      return json({ conversaciones: convs, totalUnread });
+    }
+    /* Contador ligero de mensajes sin leer (para el badge del menú) */
+    if (path === "prop-mensajes/unread" && method === "GET" && isInternal) {
+      const [c] = await db.sql`SELECT COUNT(*)::int AS n FROM propiedad_mensajes WHERE autor_rol NOT IN ('equipo','admin','superadmin') AND leido_por_equipo = FALSE`;
+      return json({ unread: (c ? c.n : 0) });
+    }
+
+    /* Mis expedientes de renta garantizada (propietario) — solo datos no sensibles */
+    if (path === "mis-rg" && method === "GET") {
+      const rows = await db.sql`SELECT * FROM rg_expedientes WHERE owner_id = ${user.id} ORDER BY updated_at DESC`;
+      const out = [];
+      for (const e of rows) {
+        const hist = await db.sql`SELECT estado_nuevo, comentario, created_at FROM rg_historial WHERE expediente_id = ${e.id} ORDER BY created_at ASC`;
+        // Liquidaciones al propietario: solo sus pagos (nunca cobros al inquilino ni márgenes)
+        const pagos = await db.sql`SELECT id, fecha, periodo, concepto, importe, estado FROM rg_movimientos WHERE expediente_id = ${e.id} AND tipo = 'pago' ORDER BY fecha DESC NULLS LAST, id DESC`;
+        let totalCobrado = 0; for (const p of pagos) if (p.estado === "confirmado") totalCobrado += num(p.importe);
+        const incAbiertas = await db.sql`SELECT COUNT(*)::int AS n FROM rg_incidencias WHERE expediente_id = ${e.id} AND estado <> 'resuelta'`;
+        out.push({ id: e.id, ref: e.ref, estado: e.estado, objetivo: e.objetivo, modalidad: e.modalidad || "",
+          municipio: e.municipio, tipoInmueble: e.tipo_inmueble, rentaPropuesta: e.renta_propuesta, proximaAccion: e.proxima_accion || "", propiedadId: e.propiedad_id || null,
+          tienePropuesta: !!e.renta_propuesta && ["Propuesta enviada","En negociación","Propuesta aceptada","Contrato pendiente","Contrato firmado"].includes(e.estado),
+          createdAt: e.created_at, historial: hist,
+          pagos: pagos, totalCobrado, incidenciasAbiertas: (incAbiertas[0] ? incAbiertas[0].n : 0),
+          firmaEstado: (e.datos && e.datos.firma && e.datos.firma.estado) || "",
+          firmaSolicitada: !!(e.datos && e.datos.firma && e.datos.firma.estado === "solicitada") });
+      }
+      return json({ expedientes: out });
+    }
+    if (seg[0] === "mis-rg" && seg[1] && seg[2] === "aceptar" && method === "POST") {
+      const [e] = await db.sql`SELECT * FROM rg_expedientes WHERE id = ${seg[1]} AND owner_id = ${user.id}`;
+      if (!e) return json({ error: "Expediente no encontrado" }, 404);
+      if (e.estado !== "Propuesta enviada" && e.estado !== "En negociación") return json({ error: "No hay una propuesta pendiente de aceptar" }, 409);
+      await db.sql`UPDATE rg_expedientes SET estado = 'Propuesta aceptada', updated_at = NOW() WHERE id = ${e.id}`;
+      await db.sql`INSERT INTO rg_historial (expediente_id,usuario,estado_anterior,estado_nuevo,comentario) VALUES (${e.id},${user.name},${e.estado},'Propuesta aceptada','Aceptada por el propietario')`;
+      try { const admins = await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','equipo','superadmin') AND activo = TRUE`; for (const a of admins) await notify(a.id, "rg", "Propuesta aceptada · " + e.ref, (user.name || "El propietario") + " ha aceptado la propuesta.", null); } catch (er) {}
+      return json({ ok: true });
+    }
+    /* FASE 3 · Firma electrónica del contrato por el propietario (SES con auditoría) */
+    if (seg[0] === "mis-rg" && seg[1] && seg[2] === "firmar" && method === "POST") {
+      const [e] = await db.sql`SELECT * FROM rg_expedientes WHERE id = ${seg[1]} AND owner_id = ${user.id}`;
+      if (!e) return json({ error: "Expediente no encontrado" }, 404);
+      const firma = (e.datos && e.datos.firma) || {};
+      if (firma.estado !== "solicitada") return json({ error: "No hay un contrato pendiente de firma." }, 409);
+      const b = await req.json();
+      if (!b.nombre || !String(b.nombre).trim()) return json({ error: "Escribe tu nombre completo para firmar." }, 400);
+      if (!b.acepta) return json({ error: "Debes confirmar la aceptación para firmar." }, 400);
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-nf-client-connection-ip") || "";
+      const datos = Object.assign({}, e.datos || {});
+      datos.firma = Object.assign({}, firma, { estado: "firmada", firmadoAt: new Date().toISOString(), firmante: String(b.nombre).trim(), ip, metodo: "SES" });
+      await db.sql`UPDATE rg_expedientes SET datos = ${JSON.stringify(datos)}::jsonb, estado = 'Contrato firmado', updated_at = NOW() WHERE id = ${e.id}`;
+      await db.sql`INSERT INTO rg_historial (expediente_id,usuario,estado_anterior,estado_nuevo,comentario) VALUES (${e.id},${user.name},${e.estado},'Contrato firmado','Firmado electrónicamente por el propietario')`;
+      try { await rgCrearPropiedadDesdeExpediente(e, user); } catch (er) {}
+      try { const admins = await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','equipo','superadmin') AND activo = TRUE`; for (const a of admins) await notify(a.id, "rg", "Contrato firmado · " + e.ref, (user.name || "El propietario") + " ha firmado el contrato electrónicamente.", e.propiedad_id); } catch (er) {}
+      return json({ ok: true });
+    }
+
+    /* ============================================================
+       IA — redacta la ficha (título, descripciones, SEO) a partir de
+       las fotos + los datos básicos. Requiere ANTHROPIC_API_KEY.
+       ============================================================ */
+    if (path === "ai/ficha" && method === "POST") {
+      if (!(typeof process !== "undefined" && process.env && (process.env.ANTHROPIC_API_KEY||process.env.ANTHOROPIC_API_KEY))) {
+        return json({ error: "La redacción con IA no está activada. Configura la variable ANTHROPIC_API_KEY en Netlify." }, 503);
+      }
+      const b = await req.json();
+      const [p] = await db.sql`SELECT * FROM propiedades WHERE id = ${b.propiedadId}`;
+      if (!p) return json({ error: "Propiedad no encontrada" }, 404);
+      if (!isInternal && p.owner_id !== user.id) return json({ error: "Sin permiso" }, 403);
+      const d = b.datos || {};
+      /* Hasta 3 imágenes (portada primero) para que la IA "vea" el inmueble */
+      const imgRows = await db.sql`SELECT blob_key, tipo FROM propiedad_imagenes WHERE propiedad_id = ${p.id} ORDER BY is_portada DESC, orden ASC, created_at ASC LIMIT 3`;
+      const imageBlocks = [];
+      for (const im of imgRows) {
+        try {
+          const buf = await imgStore().get(im.blob_key, { type: "arrayBuffer" });
+          if (buf) {
             const b64 = Buffer.from(buf).toString("base64");
             const mt = (im.tipo && /^image\/(jpeg|png|webp|gif)$/.test(im.tipo)) ? im.tipo : "image/jpeg";
             imageBlocks.push({ type: "image", source: { type: "base64", media_type: mt, data: b64 } });

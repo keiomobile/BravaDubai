@@ -108,6 +108,18 @@ test("el asistente del inversor usa sesión privada y contexto calculado en serv
   assert.doesNotMatch(portal, /portal_user_id|inversor_documentos/);
 });
 
+test("el portal inversor ofrece pagos, documentos y señales de atención", async () => {
+  const [portal, crm] = await Promise.all([read("files/inversor.html"), read("files/crm.html")]);
+  assert.match(portal, /Pagos y rentabilidad/);
+  assert.match(portal, /Centro documental/);
+  assert.match(portal, /renderPagos/);
+  assert.match(portal, /renderDocumentos/);
+  assert.match(portal, /Solicitar documentación/);
+  assert.match(crm, /Atención al inversor/);
+  assert.match(crm, /Decisión en 30 días/);
+  assert.match(crm, /Revisar acceso/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

@@ -241,6 +241,8 @@
     <section class="page" id="pg-resumen"></section>
     <section class="page" id="pg-comunicaciones"></section>
     <section class="page" id="pg-contratos"></section>
+    <section class="page" id="pg-pagos"></section>
+    <section class="page" id="pg-documentos"></section>
     <section class="page" id="pg-decisiones"></section>
     <section class="page" id="pg-oportunidades"></section>
     <section class="page" id="pg-solicitudes"></section>
@@ -383,7 +385,7 @@ function allocationHtml(cs){
 }
 
 /* ---- tabs ---- */
-var TABS=[{id:'resumen',t:'Resumen'},{id:'decisiones',t:'Vencimientos'},{id:'comunicaciones',t:'Comunicaciones'},{id:'contratos',t:'Mis contratos'},{id:'oportunidades',t:'Oportunidades'},{id:'solicitudes',t:'Contacto'}];
+var TABS=[{id:'resumen',t:'Resumen'},{id:'contratos',t:'Mis inversiones'},{id:'pagos',t:'Pagos y rentabilidad'},{id:'documentos',t:'Documentos'},{id:'decisiones',t:'Vencimientos'},{id:'comunicaciones',t:'Comunicaciones'},{id:'oportunidades',t:'Oportunidades'},{id:'solicitudes',t:'Contacto'}];
 function comSeen(){ try{ return JSON.parse(localStorage.getItem('brava_com_seen')||'[]'); }catch(e){ return []; } }
 function comUnread(){ var s=comSeen(); return COMS.filter(function(c){ return s.indexOf(c.id)<0; }).length; }
 function markComsSeen(){ try{ localStorage.setItem('brava_com_seen', JSON.stringify(COMS.map(function(c){return c.id;}))); }catch(e){} }
@@ -476,6 +478,16 @@ function renderContratos(){
   Array.prototype.forEach.call(document.querySelectorAll('#pg-contratos [data-ask]'),function(b){ b.onclick=function(){ openTicket('info','Información sobre '+b.getAttribute('data-ask'), b.getAttribute('data-ask')); }; });
   Array.prototype.forEach.call(document.querySelectorAll('#pg-contratos [data-doc]'),function(b){ b.onclick=function(){openPrivateDoc(b.getAttribute('data-doc'),b.getAttribute('data-name'));}; });
 }
+function renderPagos(){
+  var cs=DATA.contratos||[],mov=[];cs.forEach(function(c){(c.pagos||[]).forEach(function(p){mov.push({fecha:p.fecha||c.fechaInicio,concepto:p.concepto||'Aportación',importe:Number(p.importe)||0,moneda:p.moneda||c.moneda,proyecto:c.proyecto||'Inversión',tipo:'Aportación'});});(c.devoluciones||[]).forEach(function(p){mov.push({fecha:p.fecha||'',concepto:p.tipo||p.concepto||'Devolución',importe:(Number(p.capital)||0)+(Number(p.intereses)||0)+(Number(p.importe)||0),moneda:p.moneda||c.moneda,proyecto:c.proyecto||'Inversión',tipo:'Abono'});});});mov.sort(function(a,b){return String(b.fecha||'').localeCompare(String(a.fecha||''));});
+  var paid=mov.filter(function(x){return x.tipo==='Aportación';}).reduce(function(s,x){return s+(x.importe*(AEDPER[x.moneda]||1));},0),returned=mov.filter(function(x){return x.tipo==='Abono';}).reduce(function(s,x){return s+(x.importe*(AEDPER[x.moneda]||1));},0),projected=cs.reduce(function(s,c){return s+contractCalc(c).retornoTotal*(AEDPER[c.moneda]||1);},0);
+  $('#pg-pagos').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Trazabilidad económica</div><h2 class="big serif">Pagos y rentabilidad</h2><p class="lead">Movimientos registrados en tus contratos. Las proyecciones no son saldos disponibles ni garantías de pago.</p></div><div class="kgrid"><div class="kbox"><div class="k">Capital aportado</div><div class="v">'+money(paid)+'</div></div><div class="kbox"><div class="k">Abonos recibidos</div><div class="v" style="color:var(--green)">'+money(returned)+'</div></div><div class="kbox"><div class="k">Retorno proyectado</div><div class="v">'+money(projected)+'</div><div class="d">a vencimiento contractual</div></div></div><div class="card"><div class="sec"><h4>Historial de movimientos</h4>'+(mov.length?'<table><thead><tr><th>Fecha</th><th>Concepto</th><th>Inversión</th><th class="num">Importe</th></tr></thead><tbody>'+mov.map(function(x){return '<tr><td>'+fdate(x.fecha)+'</td><td><span class="chip '+(x.tipo==='Abono'?'act':'grey')+'">'+x.tipo+'</span> '+esc(x.concepto)+'</td><td>'+esc(x.proyecto)+'</td><td class="num">'+moneyCur(x.importe,x.moneda)+'</td></tr>';}).join('')+'</tbody></table>':'<div class="empty">Todavía no hay movimientos registrados.</div>')+'</div></div>';
+}
+function renderDocumentos(){
+  var cs=DATA.contratos||[],docs=[];cs.forEach(function(c){(c.documentos||[]).forEach(function(d){docs.push({id:d.id,nombre:d.nombre,categoria:d.categoria||'Documento',url:d.url,fecha:d.fecha,proyecto:c.proyecto||'Inversión'});});});docs.sort(function(a,b){return String(b.fecha||'').localeCompare(String(a.fecha||''));});var groups={};docs.forEach(function(d){(groups[d.categoria]=groups[d.categoria]||[]).push(d);});
+  $('#pg-documentos').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Archivo privado</div><h2 class="big serif">Centro documental</h2><p class="lead">Contratos, anexos, identificaciones, recibos e informes vinculados exclusivamente a tu cuenta.</p></div>'+(docs.length?Object.keys(groups).sort().map(function(k){return '<div class="card"><div class="sec"><h4>'+esc(k)+' <span class="chip grey">'+groups[k].length+'</span></h4><div style="display:grid;gap:8px">'+groups[k].map(function(d){return '<button class="choice" data-doc="'+esc(d.url)+'" data-name="'+esc(d.nombre)+'" style="display:flex;align-items:center;gap:10px;width:100%">'+docIcon()+'<span style="flex:1;text-align:left"><b>'+esc(d.nombre)+'</b><span style="display:block;font-size:12px;color:var(--faint)">'+esc(d.proyecto)+' · '+fdate(d.fecha)+'</span></span><span style="color:var(--green);font-weight:700">Abrir</span></button>';}).join('')+'</div></div></div>';}).join(''):'<div class="card"><div class="empty">Aún no hay documentos disponibles. Puedes solicitarlos al equipo.</div></div>')+'<button class="btn ghost" id="askDocs">Solicitar documentación</button>';
+  Array.prototype.forEach.call(document.querySelectorAll('#pg-documentos [data-doc]'),function(b){b.onclick=function(){openPrivateDoc(b.getAttribute('data-doc'),b.getAttribute('data-name'));};});var a=$('#askDocs');if(a)a.onclick=function(){openTicket('documentos','Solicitud de documentación','Centro documental');};
+}
 
 /* ---- VENCIMIENTOS Y DECISIONES ---- */
 function renderDecisiones(){
@@ -560,7 +572,7 @@ function renderEmpresa(){
   $('#pg-empresa').innerHTML='<div style="padding:22px 0 6px"><div class="eyebrow">Socio fundador</div><h2 class="big serif">La empresa</h2><p class="lead">Visión de conjunto de BRAVA como accionista: capital captado, despliegue y flujo de contratos.</p></div>'+kpis+capHtml+flujoHtml;
 }
 
-function renderAll(){ buildTabs(); renderResumen(); renderDecisiones(); renderComunicaciones(); renderContratos(); renderOportunidades(); renderSolicitudes(); renderEmpresa();
+function renderAll(){ buildTabs(); renderResumen(); renderDecisiones(); renderComunicaciones(); renderContratos(); renderPagos(); renderDocumentos(); renderOportunidades(); renderSolicitudes(); renderEmpresa();
   var cur=document.querySelector('.tab.on'); if(!cur)showTab('resumen'); else{ Array.prototype.forEach.call(document.querySelectorAll('[data-cur]'),function(b){ b.style.color=(b.getAttribute('data-cur')===CUR)?'var(--green)':''; }); } }
 
 function boot(){

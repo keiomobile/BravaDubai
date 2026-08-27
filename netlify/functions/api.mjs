@@ -93,7 +93,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v51-2026-08-27-commercial-workspace";
+const SCHEMA_VERSION = "v52-2026-08-27-ai-commercial-routing";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -116,7 +116,7 @@ async function ensureSchema() {
   await db.pool.query("ALTER TABLE colaboradores ADD COLUMN IF NOT EXISTS marca TEXT DEFAULT 'capital'");
   await db.pool.query("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS marca TEXT DEFAULT 'capital'");
   await db.pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ip TEXT");
-  for (const col of ["assigned_user_id INT", "next_action TEXT", "next_action_at TIMESTAMPTZ", "potential_value BIGINT DEFAULT 0", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
+  for (const col of ["assigned_user_id INT", "next_action TEXT", "next_action_at TIMESTAMPTZ", "potential_value BIGINT DEFAULT 0", "lead_score INT DEFAULT 0", "ai_summary TEXT", "ai_reason TEXT", "ai_confidence INT DEFAULT 0", "classified_at TIMESTAMPTZ", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
     await db.pool.query("ALTER TABLE leads ADD COLUMN IF NOT EXISTS " + col);
   await db.pool.query("CREATE TABLE IF NOT EXISTS ai_chat_log (id BIGSERIAL PRIMARY KEY, session_id TEXT, division TEXT, page TEXT, question TEXT, answer TEXT, ip TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
   for (const col of ["contact_name TEXT", "contact_email TEXT", "contact_phone TEXT", "intent TEXT", "status TEXT DEFAULT 'new'", "priority TEXT DEFAULT 'normal'", "assigned_user_id INT", "lead_id TEXT", "updated_at TIMESTAMPTZ DEFAULT NOW()"])
@@ -812,7 +812,7 @@ async function rgCrearPropiedadDesdeExpediente(e, user){
 
 /* ---------- mapeos ---------- */
 function opRow(r){return{id:r.id,ref:r.ref,direccion:r.direccion,tipo:r.tipo,situacion:r.situacion,cliente:r.cliente,valorMercado:r.valor_mercado,compra:r.compra,reforma:r.reforma,ventaPrev:r.venta_prev,ventaReal:r.venta_real,estado:r.estado,pagado:r.pagado,notaria:r.notaria,fechaCompra:r.fecha_compra||"",financiacion:r.financiacion,responsable:r.responsable,costes:r.costes||{},coinversion:r.coinversion||[],pagos:r.pagos||[],reformaPartidas:r.reforma_partidas||[],colaborador:r.colaborador||"",moneda:r.moneda||"EUR",detalle:r.detalle||{}};}
-function leadRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email||"",mensaje:r.mensaje||"",situacion:r.situacion,direccion:r.direccion,tipo:r.tipo,metros:r.metros,zona:r.zona,estado:r.estado,cargas:r.cargas,precioPide:r.precio_pide,oferta:r.oferta,prioridad:r.prioridad,canal:r.canal,fecha:r.fecha,estadoLead:r.estado_lead,origen:r.origen,marca:r.marca||"capital",notas:r.notas||"",assignedUserId:r.assigned_user_id||null,nextAction:r.next_action||"",nextActionAt:r.next_action_at||null,potentialValue:Number(r.potential_value)||0,updatedAt:r.updated_at||r.created_at};}
+function leadRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email||"",mensaje:r.mensaje||"",situacion:r.situacion,direccion:r.direccion,tipo:r.tipo,metros:r.metros,zona:r.zona,estado:r.estado,cargas:r.cargas,precioPide:r.precio_pide,oferta:r.oferta,prioridad:r.prioridad,canal:r.canal,fecha:r.fecha,estadoLead:r.estado_lead,origen:r.origen,marca:r.marca||"capital",notas:r.notas||"",assignedUserId:r.assigned_user_id||null,nextAction:r.next_action||"",nextActionAt:r.next_action_at||null,potentialValue:Number(r.potential_value)||0,leadScore:Number(r.lead_score)||0,aiSummary:r.ai_summary||"",aiReason:r.ai_reason||"",aiConfidence:Number(r.ai_confidence)||0,classifiedAt:r.classified_at||null,updatedAt:r.updated_at||r.created_at};}
 function cliRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email,tipo:r.tipo,viviendas:r.viviendas||[],ops:r.ops,marca:r.marca||"capital",notas:r.notas};}
 function coRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email,perfil:r.perfil,zona:r.zona,aportados:r.aportados,cerrados:r.cerrados,comision:r.comision,estadoCol:r.estado_col,marca:r.marca||"capital",notas:r.notas||"",tipo:r.tipo||"Captador",documento:r.documento||"",nacionalidad:r.nacionalidad||"",modeloComision:r.modelo_comision||"",tarifa:Number(r.tarifa)||0,moneda:r.moneda||"AED",splitBrava:r.split_brava==null?50:r.split_brava,splitEquipo:r.split_equipo==null?50:r.split_equipo,reportaA:r.reporta_a||"",fechaInicio:r.fecha_inicio||"",condiciones:r.condiciones||""};}
 function tareaRow(r){return{id:r.id,titulo:r.titulo,tipo:r.tipo,fecha:r.fecha||"",estado:r.estado,ref:r.ref||"",notas:r.notas||""};}
@@ -826,9 +826,9 @@ async function upsertOp(o){
     ON CONFLICT (id) DO UPDATE SET ref=EXCLUDED.ref,direccion=EXCLUDED.direccion,tipo=EXCLUDED.tipo,situacion=EXCLUDED.situacion,cliente=EXCLUDED.cliente,valor_mercado=EXCLUDED.valor_mercado,compra=EXCLUDED.compra,reforma=EXCLUDED.reforma,venta_prev=EXCLUDED.venta_prev,venta_real=EXCLUDED.venta_real,estado=EXCLUDED.estado,pagado=EXCLUDED.pagado,notaria=EXCLUDED.notaria,fecha_compra=EXCLUDED.fecha_compra,financiacion=EXCLUDED.financiacion,responsable=EXCLUDED.responsable,costes=EXCLUDED.costes,coinversion=EXCLUDED.coinversion,pagos=EXCLUDED.pagos,reforma_partidas=EXCLUDED.reforma_partidas,colaborador=EXCLUDED.colaborador,moneda=EXCLUDED.moneda,detalle=EXCLUDED.detalle,updated_at=NOW()`;
 }
 async function upsertLead(l){
-  await db.sql`INSERT INTO leads (id,nombre,tel,email,mensaje,situacion,direccion,tipo,metros,zona,estado,cargas,precio_pide,oferta,prioridad,canal,fecha,estado_lead,origen,marca,ip,notas,assigned_user_id,next_action,next_action_at,potential_value,updated_at)
-    VALUES (${l.id},${l.nombre||""},${l.tel||""},${l.email||""},${l.mensaje||""},${l.situacion||""},${l.direccion||""},${l.tipo||""},${l.metros||0},${l.zona||""},${l.estado||""},${l.cargas||""},${l.precioPide||0},${l.oferta||""},${l.prioridad||"NORMAL"},${l.canal||""},${l.fecha||""},${l.estadoLead||"Nuevo"},${l.origen||""},${l.marca||"capital"},${l.ip||null},${l.notas||""},${l.assignedUserId||null},${l.nextAction||""},${l.nextActionAt||null},${l.potentialValue||0},NOW())
-    ON CONFLICT (id) DO UPDATE SET nombre=EXCLUDED.nombre,tel=EXCLUDED.tel,email=EXCLUDED.email,mensaje=EXCLUDED.mensaje,situacion=EXCLUDED.situacion,direccion=EXCLUDED.direccion,tipo=EXCLUDED.tipo,metros=EXCLUDED.metros,zona=EXCLUDED.zona,estado=EXCLUDED.estado,cargas=EXCLUDED.cargas,precio_pide=EXCLUDED.precio_pide,oferta=EXCLUDED.oferta,prioridad=EXCLUDED.prioridad,canal=EXCLUDED.canal,fecha=EXCLUDED.fecha,estado_lead=EXCLUDED.estado_lead,origen=EXCLUDED.origen,marca=EXCLUDED.marca,notas=EXCLUDED.notas,assigned_user_id=EXCLUDED.assigned_user_id,next_action=EXCLUDED.next_action,next_action_at=EXCLUDED.next_action_at,potential_value=EXCLUDED.potential_value,updated_at=NOW()`;
+  await db.sql`INSERT INTO leads (id,nombre,tel,email,mensaje,situacion,direccion,tipo,metros,zona,estado,cargas,precio_pide,oferta,prioridad,canal,fecha,estado_lead,origen,marca,ip,notas,assigned_user_id,next_action,next_action_at,potential_value,lead_score,ai_summary,ai_reason,ai_confidence,classified_at,updated_at)
+    VALUES (${l.id},${l.nombre||""},${l.tel||""},${l.email||""},${l.mensaje||""},${l.situacion||""},${l.direccion||""},${l.tipo||""},${l.metros||0},${l.zona||""},${l.estado||""},${l.cargas||""},${l.precioPide||0},${l.oferta||""},${l.prioridad||"NORMAL"},${l.canal||""},${l.fecha||""},${l.estadoLead||"Nuevo"},${l.origen||""},${l.marca||"capital"},${l.ip||null},${l.notas||""},${l.assignedUserId||null},${l.nextAction||""},${l.nextActionAt||null},${l.potentialValue||0},${l.leadScore||0},${l.aiSummary||""},${l.aiReason||""},${l.aiConfidence||0},${l.classifiedAt||null},NOW())
+    ON CONFLICT (id) DO UPDATE SET nombre=EXCLUDED.nombre,tel=EXCLUDED.tel,email=EXCLUDED.email,mensaje=EXCLUDED.mensaje,situacion=EXCLUDED.situacion,direccion=EXCLUDED.direccion,tipo=EXCLUDED.tipo,metros=EXCLUDED.metros,zona=EXCLUDED.zona,estado=EXCLUDED.estado,cargas=EXCLUDED.cargas,precio_pide=EXCLUDED.precio_pide,oferta=EXCLUDED.oferta,prioridad=EXCLUDED.prioridad,canal=EXCLUDED.canal,fecha=EXCLUDED.fecha,estado_lead=EXCLUDED.estado_lead,origen=EXCLUDED.origen,marca=EXCLUDED.marca,notas=EXCLUDED.notas,assigned_user_id=EXCLUDED.assigned_user_id,next_action=EXCLUDED.next_action,next_action_at=EXCLUDED.next_action_at,potential_value=EXCLUDED.potential_value,lead_score=EXCLUDED.lead_score,ai_summary=EXCLUDED.ai_summary,ai_reason=EXCLUDED.ai_reason,ai_confidence=EXCLUDED.ai_confidence,classified_at=EXCLUDED.classified_at,updated_at=NOW()`;
 }
 async function upsertCli(c){
   await db.sql`INSERT INTO clientes (id,nombre,tel,email,tipo,viviendas,ops,marca,notas)
@@ -1137,6 +1137,35 @@ function scoreLead(l){
   if(ratio&&ratio<=0.75)sc+=3;else if(ratio&&ratio<=0.85)sc+=2;else if(ratio&&ratio<=0.95)sc+=1;
   return sc>=4?"ALTA - Oportunidad":sc>=2?"MEDIA":"NORMAL";
 }
+function leadFallbackClassification(l){
+  const text=[l.mensaje,l.situacion,l.notas,l.origen,l.canal].join(" ").toLowerCase();
+  let score=25;if(l.email||l.tel)score+=12;if(l.email&&l.tel)score+=8;
+  if(/urgente|hoy|ahora|ready|inmediato/.test(text))score+=18;
+  if(/invert|capital|presupuesto|budget|comprar|buy|vender|sell|propiedad|property/.test(text))score+=15;
+  if(/\b[1-9][0-9]{4,}\b/.test(text)||Number(l.precio_pide||l.precioPide)>0)score+=12;
+  score=Math.max(0,Math.min(100,score));
+  const division=(l.marca||"capital")==="realestate"?"realestate":((l.marca||"")==="garentto"?"garentto":"capital");
+  const urgent=score>=70,days=urgent?1:(score>=50?2:3),date=new Date(Date.now()+days*86400000).toISOString().slice(0,10);
+  const action=division==="realestate"?"Llamar para validar objetivo, presupuesto y plazo":(division==="garentto"?"Contactar para revisar inmueble y condiciones de renta":"Llamar para validar perfil, capital disponible y horizonte");
+  return {score,priority:urgent?"ALTA":(score>=45?"MEDIA":"NORMAL"),summary:String(l.mensaje||l.situacion||l.notas||"Nuevo contacto comercial").replace(/\s+/g," ").slice(0,240),reason:"Clasificación inicial por datos de contacto, intención y urgencia detectada.",nextAction:action,nextActionAt:date,potentialValue:Number(l.potential_value||l.precio_pide||l.precioPide)||0,confidence:55,division};
+}
+async function classifyAndRouteLead(leadId,useAi=true){
+  const [l]=await db.sql`SELECT * FROM leads WHERE id=${leadId}`;if(!l)return null;
+  let c=leadFallbackClassification(l);
+  if(useAi){
+    const sys="Eres el analista comercial interno de BRAVA. Clasifica un lead sin inventar información. Devuelve SOLO JSON con score (0-100), priority (ALTA, MEDIA o NORMAL), summary (máximo 240 caracteres), reason (máximo 240), nextAction (máximo 180), daysToFollowUp (1-7), potentialValue (entero AED, 0 si se desconoce) y confidence (0-100). No redactes mensajes al cliente ni tomes decisiones financieras.";
+    const payload={nombre:l.nombre||"",contacto:{email:!!l.email,telefono:!!l.tel},division:c.division,origen:l.origen||"",canal:l.canal||"",situacion:l.situacion||"",mensaje:l.mensaje||"",notas:String(l.notas||"").slice(0,1800),precio:Number(l.precio_pide)||0};
+    const ai=await anthropicMessages({model:"claude-haiku-4-5-20251001",max_tokens:450,system:sys,messages:[{role:"user",content:JSON.stringify(payload)}]});
+    if(ai.ok){try{const raw=(ai.data.content||[]).map(x=>x.text||"").join(""),m=raw.match(/\{[\s\S]*\}/),x=m&&JSON.parse(m[0]);if(x){const days=Math.max(1,Math.min(7,Number(x.daysToFollowUp)||2));c={...c,score:Math.max(0,Math.min(100,Number(x.score)||c.score)),priority:["ALTA","MEDIA","NORMAL"].includes(x.priority)?x.priority:c.priority,summary:String(x.summary||c.summary).slice(0,240),reason:String(x.reason||c.reason).slice(0,240),nextAction:String(x.nextAction||c.nextAction).slice(0,180),nextActionAt:new Date(Date.now()+days*86400000).toISOString().slice(0,10),potentialValue:Math.max(0,Number(x.potentialValue)||c.potentialValue),confidence:Math.max(0,Math.min(100,Number(x.confidence)||70))};}}catch(e){}
+    }
+  }
+  const staff=await db.sql`SELECT u.id,u.name,u.username,u.divisiones,COUNT(l.id)::int AS workload FROM usuarios u LEFT JOIN leads l ON l.assigned_user_id=u.id AND l.estado_lead NOT IN ('Ganado','Perdido') WHERE u.role IN ('admin','superadmin','equipo') AND u.activo=TRUE GROUP BY u.id ORDER BY workload ASC,u.id ASC`;
+  const eligible=staff.filter(u=>u.role==="superadmin"||!Array.isArray(u.divisiones)||!u.divisiones.length||u.divisiones.includes(c.division));
+  const assignee=l.assigned_user_id||(eligible[0]&&eligible[0].id)||null;
+  await db.sql`UPDATE leads SET prioridad=${c.priority},assigned_user_id=${assignee},next_action=CASE WHEN COALESCE(next_action,'')='' THEN ${c.nextAction} ELSE next_action END,next_action_at=CASE WHEN next_action_at IS NULL THEN ${c.nextActionAt} ELSE next_action_at END,potential_value=CASE WHEN COALESCE(potential_value,0)=0 THEN ${c.potentialValue} ELSE potential_value END,lead_score=${c.score},ai_summary=${c.summary},ai_reason=${c.reason},ai_confidence=${c.confidence},classified_at=NOW(),updated_at=NOW() WHERE id=${leadId}`;
+  if(assignee&&!l.assigned_user_id)await notify(assignee,"lead_assigned","Nuevo lead asignado · "+(l.nombre||"Contacto"),c.nextAction,leadId);
+  return {...c,assignedUserId:assignee};
+}
 
 /* ============================================================
    HANDLER
@@ -1254,6 +1283,7 @@ export default async (req) => {
       };
       lead.prioridad = body.prioridad || scoreLead(lead);
       await upsertLead(lead);
+      try { await classifyAndRouteLead(id, true); } catch (e) { console.error("[lead-auto]", e && e.message); }
       /* Un único aviso agregado a administradores (no a todo el equipo, para evitar avalancha de emails) */
       try {
         const etiqueta = marca === "realestate" ? "Brava Real Estate" : (marca === "garentto" ? "Brava Rent" : "Brava Dubai");
@@ -1309,6 +1339,7 @@ export default async (req) => {
       const transcript=chats.map(x=>"Cliente: "+x.question+"\nBRAVA: "+x.answer).join("\n\n").slice(0,12000),id=uid("ld");
       const lead={id,nombre:name,tel:phone,email,mensaje:String(b.message||"").slice(0,2000),situacion:intent,direccion:"",tipo:"",metros:0,zona:"",estado:"",cargas:"",precioPide:0,valorMercado:0,oferta:"",canal:"Chat web",fecha:new Date().toISOString().slice(0,10),estadoLead:"Nuevo",origen:"Chat · "+division,marca,ip:handoffIp,notas:("Conversación transferida al equipo.\n\n"+transcript).slice(0,14000),prioridad:priority};
       await upsertLead(lead);
+      try { await classifyAndRouteLead(id, true); } catch (e) { console.error("[lead-auto]", e && e.message); }
       await db.sql`UPDATE ai_chat_log SET contact_name=${name},contact_email=${email},contact_phone=${phone},intent=${intent},status='open',priority=${priority.toLowerCase()},lead_id=${id},updated_at=NOW() WHERE session_id=${sid}`;
       const admins=await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','superadmin','equipo') AND activo=TRUE`;
       for(const a of admins.slice(0,20))await notify(a.id,"chat_handoff","Nuevo chat · "+name,intent+" · "+division,id);
@@ -1484,6 +1515,7 @@ export default async (req) => {
       };
       lead.prioridad = scoreLead(lead);
       await upsertLead(lead);
+      try { await classifyAndRouteLead(id, true); } catch (e) { console.error("[lead-auto]", e && e.message); }
       /* Fotos del inmueble → tabla documentos, ligadas al lead (op_id = id del lead) */
       const fotos = Array.isArray(body.fotos) ? body.fotos : [];
       let n = 0;
@@ -1875,6 +1907,13 @@ export default async (req) => {
     /* Pipeline comercial sobre los leads existentes. */
     if (path === "commercial/pipeline" && method === "GET") {
       if(!isInternal)return json({error:"Solo equipo interno"},403);const rows=await db.sql`SELECT * FROM leads ORDER BY updated_at DESC NULLS LAST,created_at DESC LIMIT 1000`;const users=await db.sql`SELECT id,name,username FROM usuarios WHERE role IN ('admin','superadmin','equipo') AND activo=TRUE ORDER BY name`;return json({leads:rows.map(leadRow),users});
+    }
+    if (path === "commercial/pipeline/auto" && method === "POST") {
+      if(!isInternal)return json({error:"Solo equipo interno"},403);const b=await req.json().catch(()=>({}));
+      if(b.leadId){const result=await classifyAndRouteLead(String(b.leadId),true);if(!result)return json({error:"Lead no encontrado"},404);return json({ok:true,result});}
+      const pending=await db.sql`SELECT id FROM leads WHERE classified_at IS NULL AND estado_lead NOT IN ('Ganado','Perdido') ORDER BY created_at DESC LIMIT 5`;
+      const results=[];for(const x of pending){try{const result=await classifyAndRouteLead(x.id,true);if(result)results.push({id:x.id,...result});}catch(e){results.push({id:x.id,error:"No se pudo clasificar"});}}
+      return json({ok:true,processed:results.length,remaining:Math.max(0,pending.length-results.length),results});
     }
     if (seg[0] === "commercial" && seg[1] === "pipeline" && seg[2] && method === "PUT") {
       if(!isInternal)return json({error:"Solo equipo interno"},403);const stages=["Nuevo","Contactado","Cualificado","Propuesta","Negociación","Ganado","Perdido"],b=await req.json().catch(()=>({})),[old]=await db.sql`SELECT * FROM leads WHERE id=${seg[2]}`;if(!old)return json({error:"Lead no encontrado"},404);const stage=stages.includes(b.stage)?b.stage:(old.estado_lead||"Nuevo"),assignee=b.assignedUserId?parseInt(b.assignedUserId,10):null,next=String(b.nextAction||"").slice(0,500),nextAt=b.nextActionAt||null,value=Math.max(0,Number(b.potentialValue)||0);

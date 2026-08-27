@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="only light">
 <title>Área del inversor · Brava</title>
 <link rel="icon" href="/brand/brava-favicon.png">
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
@@ -137,13 +138,68 @@
   }
   @media(max-width:400px){ .kgrid,.kpis,.oppgrid{grid-template-columns:1fr} }
 </style>
+<style>
+  /* BRAVA OS · interfaz clara alineada con el CRM */
+  :root{--bg:#F5F6F8;--panel:#FFFFFF;--panel2:#F1F3F5;--line:rgba(14,17,22,.10);--line2:rgba(14,17,22,.16);--ink:#0E1116;--mut:#6A7178;--faint:#9AA1A9;--green:#127A56;--green-d:#0B5E42;--gold:#8A6D3B;--r:16px}
+  html{color-scheme:only light}
+  body{background-color:var(--bg);background-image:radial-gradient(circle at 82% -5%,rgba(18,122,86,.10),transparent 29%),linear-gradient(rgba(14,17,22,.023) 1px,transparent 1px),linear-gradient(90deg,rgba(14,17,22,.023) 1px,transparent 1px);background-size:auto,32px 32px,32px 32px;color:var(--ink)}
+  ::selection{background:var(--ink);color:#fff}
+  #auth{background:radial-gradient(circle at 50% 12%,rgba(18,122,86,.12),transparent 31%),linear-gradient(rgba(14,17,22,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(14,17,22,.025) 1px,transparent 1px),var(--bg);background-size:auto,30px 30px,30px 30px}
+  .auth-card{position:relative;background:rgba(255,255,255,.94);border:1px solid rgba(14,17,22,.08);border-radius:24px;padding:40px 34px;box-shadow:0 40px 100px -55px rgba(14,17,22,.48),0 1px 0 #fff inset;overflow:hidden}
+  .auth-card:before{content:"SECURE INVESTOR ACCESS";display:block;font-size:9px;font-weight:800;letter-spacing:.2em;color:var(--green);margin-bottom:22px;padding-left:18px;position:relative}
+  .auth-card:after{content:"";position:absolute;left:34px;top:45px;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(18,122,86,.10),0 0 18px rgba(18,122,86,.35)}
+  .auth-card .lg{height:32px;margin-bottom:24px}
+  .auth-card h1{font-size:27px;letter-spacing:-.035em}
+  .auth-card .sub{color:var(--mut);line-height:1.65}
+  .field label{color:var(--mut);font-weight:650}
+  .field input,.field select,.field textarea{background:var(--bg);border-color:transparent;color:var(--ink);box-shadow:0 0 0 1px rgba(14,17,22,.055) inset}
+  .field input:focus,.field select:focus,.field textarea:focus{background:#fff;border-color:var(--ink);box-shadow:0 0 0 3px rgba(14,17,22,.055)}
+  .pass-wrap button{color:var(--mut)}
+  .btn{background:var(--ink);color:#fff;border-radius:10px;box-shadow:0 8px 22px -16px rgba(14,17,22,.7)}
+  .btn:hover:not(:disabled){background:#000;transform:translateY(-1px)}
+  .btn.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
+  .btn.ghost:hover{background:var(--ink);color:#fff}
+  .msg.ok{color:var(--green)}.msg.err{color:#A6303B}
+  .supportbar{background:#F8EFDF;color:#6f470f;border-bottom:1px solid rgba(154,97,20,.16)}
+  .top{background:rgba(255,255,255,.86);border-bottom-color:rgba(14,17,22,.07);box-shadow:0 10px 35px -32px rgba(14,17,22,.65)}
+  .top .wrap{height:70px}.top .lg{height:25px}
+  .top .who{color:var(--mut)}
+  .avatar{background:linear-gradient(135deg,#0E1116,#29313a);color:#fff;box-shadow:0 0 0 4px rgba(18,122,86,.09)}
+  .tabs{top:70px;background:rgba(245,246,248,.88);border-bottom-color:rgba(14,17,22,.07)}
+  .tabs .wrap{height:56px}
+  .tab{color:var(--mut)}.tab:hover,.tab.on{color:var(--ink);background:rgba(255,255,255,.72)}
+  .tab.on::after{background:var(--ink);height:3px}.tab .dot{background:var(--ink);color:#fff}
+  .page{padding-top:34px}
+  .eyebrow{color:var(--green);display:flex;align-items:center;gap:9px}.eyebrow:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(18,122,86,.10)}
+  h2.big{font-size:clamp(27px,4vw,38px);letter-spacing:-.035em;color:var(--ink)}
+  .lead{color:var(--mut)}
+  .kgrid{gap:15px}
+  .kbox{position:relative;background:rgba(255,255,255,.96);border-color:rgba(14,17,22,.07);box-shadow:0 22px 55px -48px rgba(14,17,22,.62);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s}
+  .kbox:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--green),transparent)}
+  .kbox:hover{transform:translateY(-3px);border-color:rgba(18,122,86,.18);box-shadow:0 30px 65px -45px rgba(14,17,22,.55)}
+  .kbox .k,.kpi .k,.sec h4,th{color:var(--faint)}
+  .kbox .v,.kpi .v{font-variant-numeric:tabular-nums;color:var(--ink)}
+  .prog{background:#E7EBE9}.prog i{background:linear-gradient(90deg,var(--green-d),#23A978);box-shadow:0 0 14px rgba(18,122,86,.3)}
+  .card,.opp,.ticket{background:rgba(255,255,255,.97);border-color:rgba(14,17,22,.075);box-shadow:0 24px 65px -55px rgba(14,17,22,.72)}
+  .card{transition:border-color .2s,box-shadow .2s}.card:hover{border-color:rgba(14,17,22,.13);box-shadow:0 28px 70px -54px rgba(14,17,22,.72)}
+  .card-h,.sec,.r,td{border-color:rgba(14,17,22,.075)}
+  .kpis{background:rgba(14,17,22,.075);border-color:rgba(14,17,22,.075)}.kpi{background:#fff}
+  .r .rk,.card-h .p,.opp .bd .loc,.ticket .rp{color:var(--mut)}
+  .chip.act{background:#E5F3EC;color:#127A56}.chip.socio{background:#F8EFDF;color:#8A6D3B}.chip.warn{background:#F8EFDF;color:#9A6114}.chip.grey{background:#EEF0F2;color:#6A7178}
+  .alert{border-color:rgba(154,97,20,.2);background:linear-gradient(135deg,#FFF9ED,#F2FAF6)}
+  .choice{background:#F7F8F9;border-color:var(--line);color:var(--ink)}.choice.on{border-color:var(--green);background:#F1F8F5;box-shadow:0 0 0 3px rgba(18,122,86,.08)}
+  .timeline{border-left-color:rgba(14,17,22,.15)}.timeline div:before{background:var(--green);box-shadow:0 0 0 4px #E5F3EC}
+  .opp .ph{background-color:#E9ECEF}.opp:hover{transform:translateY(-3px);border-color:rgba(18,122,86,.2)}
+  .foot{color:var(--faint)}.foot a{color:var(--mut)}
+  @media(max-width:640px){.top .wrap{height:62px}.tabs{top:62px}.auth-card{padding:34px 24px}.auth-card:after{left:24px}.page{padding-top:24px}.kbox:hover,.opp:hover{transform:none}}
+</style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="auth">
   <div class="auth-card">
-    <img class="lg" src="/brand/brava-investment-white.png" alt="Brava">
+    <img class="lg" src="/brand/brava-investment-color.png" alt="Brava">
     <h1>Área del inversor</h1>
     <div class="sub">Accede a tu posición: contratos, aportaciones, retorno, oportunidades y solicitudes.</div>
     <form id="loginForm">
@@ -165,7 +221,7 @@
   <div class="supportbar" id="supportBar"><span id="supportText">Vista de soporte</span><button id="supportExit">Cerrar acceso</button></div>
   <header class="top">
     <div class="wrap">
-      <img class="lg" src="/brand/brava-investment-white.png" alt="Brava">
+      <img class="lg" src="/brand/brava-investment-color.png" alt="Brava">
       <div class="who">
         <span id="whoName"></span>
         <div class="avatar" id="whoAv">?</div>

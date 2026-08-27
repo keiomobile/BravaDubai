@@ -199,6 +199,19 @@ test("el CRM reúne las prioridades de inversores en un centro operativo privado
   assert.match(crm, /Citas solicitadas/);
 });
 
+test("el control de lanzamiento audita recorridos sin alterar inversiones reales", async () => {
+  const [api, crm] = await Promise.all([read("netlify/functions/api.mjs"), read("files/crm.html")]);
+  assert.match(api, /launch_incidents/);
+  assert.match(api, /path === "launch-readiness"/);
+  assert.match(api, /Acceso de inversores/);
+  assert.match(api, /Correo corporativo/);
+  assert.match(api, /path === "launch-incidents"/);
+  assert.match(crm, /Control de lanzamiento/);
+  assert.match(crm, /diagnóstico de solo lectura/);
+  assert.match(crm, /Nueva incidencia/);
+  assert.match(crm, /Incidencias técnicas y operativas/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

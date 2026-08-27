@@ -3279,11 +3279,15 @@ function openInv(id){
     +(i.email?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" id="invSupportView">Entrar como inversor</button><button type="button" class="btn ghost sm" id="invAccCrear">'+(i.portalUserId?'Restablecer contraseña':'Crear acceso')+'</button><button type="button" class="btn ghost sm" id="invAccLink">Copiar enlace</button><button type="button" class="btn ghost sm" id="invAccMail">Enviar acceso por email</button></div>':'')
     +'<div id="invAccOut" style="margin-top:10px"></div>';
   body+='<div class="section-title">Documentos del inversor</div>'
-    +'<div style="font-size:12px;color:var(--grey2);margin-bottom:6px">Contrato, recibos, estado de cuenta… El inversor los ve y descarga en su portal.</div>'
+    +'<div style="font-size:12px;color:var(--grey2);margin-bottom:6px">Expediente obligatorio, validación y archivo privado visible para el inversor.</div>'
+    +'<div id="invChecklist" style="padding:4px 0">Cargando expediente…</div>'
+    +'<div style="display:flex;gap:8px;margin:8px 0 14px"><button type="button" class="btn ghost sm" id="invRequestDocs">Solicitar pendientes por email</button></div>'
+    +'<div class="section-title">Archivo documental</div>'
     +'<div id="invDocsList" class="tsub" style="padding:4px 0">Cargando…</div>'
     +'<input id="invDocFile" type="file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" hidden>'
     +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><select id="invDocCat" style="max-width:180px"><option>Contrato</option><option>Recibo</option><option>Estado de cuenta</option><option>Informe</option><option>Documento</option></select><button type="button" class="btn ghost sm" id="invDocBtn">Subir documento</button></div>'
     +'<div id="invDocProg" class="tsub" style="display:none;margin-top:6px"></div>';
+  body+='<div class="section-title">Videollamadas</div><div id="invAppointments" class="tsub">Cargando citas…</div>';
   openModal(i.inversor,'Contrato de inversión', body,
     [{t:'Registrar pago',cls:'ghost',fn:function(){ openInvPago(i); }}]
     .concat(isCoinv?[{t:'Registrar devolución',cls:'ghost',fn:function(){ openInvDevolucion(i); }}]:[])
@@ -3338,17 +3342,23 @@ function bindInvAcceso(i){
   };
 }
 function loadInvDocs(invId){
-  var el=$('#invDocsList'); if(!el)return;
-  fetch(API_BASE+'/inversiones/'+invId+'/documentos',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.ok?r.json():{documentos:[]};}).then(function(d){
-    var docs=d.documentos||[];
+  var el=$('#invDocsList'),check=$('#invChecklist'); if(!el)return;
+  Promise.all([fetch(API_BASE+'/inversiones/'+invId+'/documentos',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.ok?r.json():{documentos:[]};}),fetch(API_BASE+'/inversiones/'+invId+'/expediente',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.ok?r.json():{requirements:[],events:[]};}),fetch(API_BASE+'/inversiones/'+invId+'/citas',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.ok?r.json():{appointments:[]};})]).then(function(all){
+    var d=all[0],exp=all[1],docs=d.documentos||[],reqs=exp.requirements||[],valid=reqs.filter(function(r){return r.status==='Validado';}).length,appts=all[2].appointments||[],apEl=$('#invAppointments');
     el.innerHTML=docs.length?docs.map(function(x){ return '<div class="drow"><span class="dk"><button class="btn ghost sm" data-openinvdoc="'+esc(x.id)+'">'+esc(x.nombre)+'</button> <span class="tsub">· '+esc(x.categoria||'')+'</span></span><span class="dv"><button class="btn ghost sm" data-idocrm="'+esc(x.id)+'">Quitar</button></span></div>'; }).join(''):'<div class="tsub" style="padding:2px 0">Sin documentos todavía.</div>';
+    if(check)check.innerHTML='<div class="role-note" style="margin-bottom:8px"><b>'+valid+' de '+reqs.length+' requisitos validados</b>. La liquidación queda bloqueada mientras exista documentación obligatoria pendiente.</div>'+(reqs.length?reqs.map(function(r){var col=r.status==='Validado'?'var(--pos)':(r.status==='Rechazado'?'var(--neg)':'var(--warn)');return '<div class="drow"><span class="dk"><b>'+esc(r.title)+'</b><span class="tsub" style="display:block">'+esc(r.category||'Documento')+(r.note?' · '+esc(r.note):'')+'</span></span><span class="dv"><b style="color:'+col+'">'+esc(r.status)+'</b><div style="display:flex;gap:5px;justify-content:flex-end;margin-top:5px">'+(r.documentId?'<button class="btn ghost sm" data-openinvdoc="'+esc(r.documentId)+'">Abrir</button><button class="btn ghost sm" data-reviewreq="'+esc(r.id)+'" data-state="Validado">Validar</button><button class="btn ghost sm" data-reviewreq="'+esc(r.id)+'" data-state="Rechazado">Rechazar</button>':'<span class="tsub">Sin archivo</span>')+'</div></span></div>';}).join(''):'<div class="tsub">Sin requisitos.</div>');
     $$('#invDocsList [data-openinvdoc]').forEach(function(b){b.onclick=function(){fetch(API_BASE+'/inv-doc/'+b.getAttribute('data-openinvdoc'),{headers:{Authorization:'Bearer '+TOKEN}}).then(function(r){if(!r.ok)throw Error();return r.blob();}).then(function(blob){var u=URL.createObjectURL(blob);window.open(u,'_blank','noopener');setTimeout(function(){URL.revokeObjectURL(u);},60000);}).catch(function(){toast('No se pudo abrir el documento');});};});
+    $$('#invChecklist [data-openinvdoc]').forEach(function(b){b.onclick=function(){fetch(API_BASE+'/inv-doc/'+b.getAttribute('data-openinvdoc'),{headers:{Authorization:'Bearer '+TOKEN}}).then(function(r){if(!r.ok)throw Error();return r.blob();}).then(function(blob){var u=URL.createObjectURL(blob);window.open(u,'_blank','noopener');setTimeout(function(){URL.revokeObjectURL(u);},60000);}).catch(function(){toast('No se pudo abrir el documento');});};});
+    $$('#invChecklist [data-reviewreq]').forEach(function(b){b.onclick=function(){var state=b.getAttribute('data-state'),note=state==='Rechazado'?(prompt('Indica el motivo para el inversor:')||''):'',expires=state==='Validado'?(prompt('Fecha de caducidad AAAA-MM-DD (opcional):')||''):'';if(state==='Rechazado'&&!note)return;apiPP('/inversiones/'+invId+'/expediente/'+b.getAttribute('data-reviewreq')+'/review','POST',{status:state,note:note,expiresAt:expires}).then(function(r){if(!r.ok)toast((r.data&&r.data.error)||'No se pudo revisar');else{toast('Expediente actualizado');loadInvDocs(invId);}});};});
     $$('#invDocsList [data-idocrm]').forEach(function(b){ b.onclick=function(){ apiPP('/inversiones/'+invId+'/documentos/'+b.getAttribute('data-idocrm'),'DELETE').then(function(){ loadInvDocs(invId); }); }; });
+    if(apEl)apEl.innerHTML=appts.length?appts.map(function(a){return '<div class="drow"><span class="dk"><b>'+fdate(a.requestedAt)+' · '+esc(a.channel||'Videollamada')+'</b><span class="tsub" style="display:block">'+esc(a.note||'Sin comentario')+'</span></span><span class="dv"><b>'+esc(a.status)+'</b><div style="display:flex;gap:5px;margin-top:5px"><button class="btn ghost sm" data-appt="'+esc(a.id)+'" data-appt-state="Confirmada">Confirmar</button><button class="btn ghost sm" data-appt="'+esc(a.id)+'" data-appt-state="Realizada">Realizada</button></div></span></div>';}).join(''):'Sin citas solicitadas.';
+    $$('#invAppointments [data-appt]').forEach(function(b){b.onclick=function(){var state=b.getAttribute('data-appt-state'),link=state==='Confirmada'?(prompt('Enlace HTTPS de la videollamada (opcional):')||''):'';apiPP('/inversiones/'+invId+'/citas/'+b.getAttribute('data-appt'),'POST',{status:state,meetingUrl:link}).then(function(r){toast(r.ok?'Cita actualizada':((r.data&&r.data.error)||'No se pudo actualizar'));loadInvDocs(invId);});};});
   }).catch(function(){ el.innerHTML='<div class="tsub">No se pudieron cargar.</div>'; });
 }
 function bindInvDocs(invId){
   loadInvDocs(invId);
   var btn=$('#invDocBtn'), f=$('#invDocFile'); if(!btn||!f)return;
+  var rq=$('#invRequestDocs');if(rq)rq.onclick=function(){rq.disabled=true;apiPP('/inversiones/'+invId+'/expediente/request','POST',{}).then(function(r){toast(r.ok?('Solicitud enviada · '+((r.data&&r.data.requested)||0)+' pendientes'):((r.data&&r.data.error)||'No se pudo solicitar'));loadInvDocs(invId);}).finally(function(){rq.disabled=false;});};
   btn.onclick=function(){ f.click(); };
   f.onchange=function(){ var file=f.files&&f.files[0]; if(!file)return; var cat=($('#invDocCat')&&$('#invDocCat').value)||'Documento'; var pr=$('#invDocProg');
     if(file.size>8*1048576){ toast('"'+file.name+'" supera 8 MB. Comprime el PDF (o reduce su resolución) antes de subirlo.'); f.value=''; return; }

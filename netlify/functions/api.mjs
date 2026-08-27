@@ -93,7 +93,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v53-2026-08-27-commercial-activity-timeline";
+const SCHEMA_VERSION = "v54-2026-08-27-investor-document-workflow";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -162,6 +162,12 @@ async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS comunicaciones (\n  id TEXT PRIMARY KEY, titulo TEXT, cuerpo TEXT, tipo TEXT DEFAULT 'Novedad',\n  audiencia TEXT DEFAULT 'todos', proyecto TEXT, fecha TEXT, publicada BOOLEAN DEFAULT TRUE,\n  autor TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
   /* Documentos del inversor (contrato, recibos, estados de cuenta) — privados */
   await db.pool.query("CREATE TABLE IF NOT EXISTS inversor_documentos (\n  id TEXT PRIMARY KEY, inversion_id TEXT, email TEXT, nombre TEXT, categoria TEXT DEFAULT 'Documento',\n  blob_key TEXT, tipo TEXT, size INT DEFAULT 0, subido_por TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE TABLE IF NOT EXISTS inversion_document_requirements (\n  id TEXT PRIMARY KEY, inversion_id TEXT NOT NULL, requirement_key TEXT NOT NULL, titulo TEXT NOT NULL, categoria TEXT, obligatorio BOOLEAN DEFAULT TRUE, estado TEXT DEFAULT 'Pendiente', document_id TEXT, caduca_at DATE, nota TEXT, requested_at TIMESTAMPTZ, reviewed_at TIMESTAMPTZ, reviewed_by INT, updated_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(inversion_id,requirement_key))");
+  await db.pool.query("CREATE TABLE IF NOT EXISTS inversion_document_events (\n  id BIGSERIAL PRIMARY KEY, inversion_id TEXT NOT NULL, requirement_id TEXT, document_id TEXT, actor_id INT, actor_name TEXT, actor_role TEXT, tipo TEXT NOT NULL, detalle TEXT, ip TEXT, created_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE TABLE IF NOT EXISTS investor_appointments (\n  id TEXT PRIMARY KEY, user_id INT NOT NULL, investment_id TEXT, requested_at TIMESTAMPTZ NOT NULL, timezone TEXT DEFAULT 'Asia/Dubai', channel TEXT DEFAULT 'Videollamada', note TEXT, status TEXT DEFAULT 'Solicitada', meeting_url TEXT, assigned_user_id INT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_inv_doc_req_inv ON inversion_document_requirements(inversion_id,estado)");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_inv_doc_evt_inv ON inversion_document_events(inversion_id,created_at DESC)");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_inv_appointments_user ON investor_appointments(user_id,requested_at DESC)");
   /* Ciclo de vencimiento del inversor: una decisión vigente por contrato, con
      trazabilidad de la aceptación y gestión posterior desde el CRM. */
   await db.pool.query("CREATE TABLE IF NOT EXISTS inversion_decisiones (\n  id TEXT PRIMARY KEY, inversion_id TEXT NOT NULL, user_id INT REFERENCES usuarios(id) ON DELETE CASCADE,\n  decision TEXT NOT NULL, estado TEXT DEFAULT 'Decision registrada', comentario TEXT, propuesta TEXT,\n  firmante TEXT, aceptacion BOOLEAN DEFAULT FALSE, firma_ip TEXT, firma_at TIMESTAMPTZ, documento_html TEXT,\n  importe_final BIGINT, moneda TEXT DEFAULT 'AED', fecha_pago DATE, referencia_pago TEXT, informe TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(inversion_id,user_id))");
@@ -659,6 +665,22 @@ function investmentMilestones(inv){
   const out=[],annual=start&&addMonthsISO(start,12); if(annual && (term>=24 || (end && String(end).slice(0,10)>=annual))) out.push({hito:"primer_aniversario",fecha:annual,retorno:10,titulo:"Primer aniversario"});
   if(end) out.push({hito:"vencimiento_final",fecha:String(end).slice(0,10),retorno:Number(inv.rentabilidad)||20,titulo:"Vencimiento contractual"});
   return out.filter(x=>x.fecha);
+}
+const INVESTOR_DOC_DEFAULTS = [
+  {key:"identidad",titulo:"Documento de identidad vigente",categoria:"Identificación",obligatorio:true},
+  {key:"contrato",titulo:"Contrato de co-inversión firmado",categoria:"Contrato",obligatorio:true},
+  {key:"aportacion",titulo:"Justificante de aportación",categoria:"Recibo",obligatorio:true},
+  {key:"fiscal",titulo:"Información fiscal y residencia",categoria:"Fiscal",obligatorio:true},
+];
+async function ensureInvestorChecklist(inversionId){
+  for(const x of INVESTOR_DOC_DEFAULTS) await db.sql`INSERT INTO inversion_document_requirements (id,inversion_id,requirement_key,titulo,categoria,obligatorio) VALUES (${uid("ireq")},${inversionId},${x.key},${x.titulo},${x.categoria},${x.obligatorio}) ON CONFLICT (inversion_id,requirement_key) DO NOTHING`;
+  const [reqs,docs]=await Promise.all([db.sql`SELECT * FROM inversion_document_requirements WHERE inversion_id=${inversionId} ORDER BY obligatorio DESC,titulo`,db.sql`SELECT id,nombre,categoria,tipo,size,subido_por,created_at FROM inversor_documentos WHERE inversion_id=${inversionId} ORDER BY created_at DESC`]);
+  for(const r of reqs){if(r.caduca_at&&String(r.caduca_at).slice(0,10)<new Date().toISOString().slice(0,10)&&r.estado==="Validado"){await db.sql`UPDATE inversion_document_requirements SET estado='Caducado',updated_at=NOW() WHERE id=${r.id}`;r.estado="Caducado";}if(r.document_id)continue;const cat=String(r.categoria||"").toLowerCase(),match=docs.find(d=>String(d.categoria||"").toLowerCase()===cat);if(match){await db.sql`UPDATE inversion_document_requirements SET document_id=${match.id},estado='Recibido',updated_at=NOW() WHERE id=${r.id}`;r.document_id=match.id;r.estado="Recibido";}}
+  return {requirements:reqs.map(r=>({id:r.id,key:r.requirement_key,title:r.titulo,category:r.categoria,required:r.obligatorio,status:r.estado,documentId:r.document_id,expiresAt:r.caduca_at,note:r.nota,requestedAt:r.requested_at,reviewedAt:r.reviewed_at,updatedAt:r.updated_at})),documents:docs.map(d=>({id:d.id,name:d.nombre,category:d.categoria,type:d.tipo,size:d.size,uploadedBy:d.subido_por,createdAt:d.created_at,url:"/api/inv-doc/"+d.id}))};
+}
+async function investorDocEvent(inversionId, requirementId, documentId, user, type, detail, req){
+  const ip=String(req.headers.get("x-forwarded-for")||req.headers.get("x-nf-client-connection-ip")||"").split(",")[0].trim();
+  await db.sql`INSERT INTO inversion_document_events (inversion_id,requirement_id,document_id,actor_id,actor_name,actor_role,tipo,detalle,ip) VALUES (${inversionId},${requirementId||null},${documentId||null},${user.id},${user.name||user.username},${user.role},${type},${String(detail||"").slice(0,1000)},${ip})`;
 }
 function decisionDocument(inv, decision, firmante, milestone){
   const liquidar = decision === "liquidar";
@@ -2368,6 +2390,11 @@ export default async (req) => {
           rentabilidad:c.rentabilidad, modalidad:c.modalidad, plazoMeses:c.plazoMeses, fechaInicio:c.fechaInicio, fechaFin:c.fechaFin,
           diasVencimiento:daysUntil(c.fechaFin), hitos:investmentMilestones(c).map(h=>Object.assign({},h,{dias:daysUntil(h.fecha)})), estado:c.estado, condiciones:c.condiciones, pagos:c.pagos, pagado:Math.round(pagado), pagadoAED:Math.round(pagadoAED), devoluciones:c.devoluciones||[] };
       });
+      try {
+        const opIds=rows.map(r=>r.op_id).filter(Boolean),ops=opIds.length?await db.sql`SELECT id,estado,situacion,fecha_compra,updated_at FROM operaciones WHERE id=ANY(${opIds})`:[],projects=await db.sql`SELECT nombre,obra_pct,obra_fase,obra_actualizado FROM proyectos WHERE publicado=TRUE`;
+        const om={};ops.forEach(o=>om[o.id]=o);const pm={};projects.forEach(p=>pm[String(p.nombre||"").toLowerCase()]=p);
+        contratos.forEach((c,i)=>{const o=om[rows[i].op_id],p=pm[String(c.proyecto||"").toLowerCase()];c.seguimiento=o?{tipo:"operacion",fase:o.estado||o.situacion||"En seguimiento",detalle:o.situacion||"",actualizado:o.updated_at||o.fecha_compra||null}:p?{tipo:"proyecto",fase:p.obra_fase||p.nombre||"En desarrollo",progreso:Math.max(0,Math.min(100,Number(p.obra_pct)||0)),actualizado:p.obra_actualizado||null}:null;});
+      } catch(e){contratos.forEach(c=>c.seguimiento=null);}
       /* Decisiones, eventos y aviso de vencimiento. Nunca exponemos notas internas. */
       try {
         const decisiones = await db.sql`SELECT id,inversion_id,hito,decision,estado,comentario,propuesta,firmante,aceptacion,firma_at,importe_final,moneda,fecha_pago,referencia_pago,informe,created_at,updated_at FROM inversion_decisiones WHERE user_id = ${user.id}`;
@@ -2429,6 +2456,12 @@ export default async (req) => {
     if (path === "mi-perfil-inversor" && method === "PUT") {
       const b=await req.json().catch(()=>({})),phone=String(b.phone||"").trim().slice(0,40);if(phone&&!/^[+0-9 ()-]{6,40}$/.test(phone))return json({error:"Teléfono no válido"},400);const [p]=await db.sql`SELECT consent FROM usuarios WHERE id=${user.id}`,consent=(p&&p.consent&&typeof p.consent==="object")?p.consent:{};consent.investorPreferences={emailUpdates:b.preferences&&b.preferences.emailUpdates!==false,whatsappUpdates:!!(b.preferences&&b.preferences.whatsappUpdates),monthlySummary:b.preferences&&b.preferences.monthlySummary!==false,transactionAlerts:true};await db.sql`UPDATE usuarios SET telefono=${phone},consent=${JSON.stringify(consent)}::jsonb WHERE id=${user.id}`;return json({ok:true});
     }
+    if (path === "mi-citas" && method === "GET") {
+      const rows=await db.sql`SELECT id,investment_id,requested_at,timezone,channel,note,status,meeting_url,created_at FROM investor_appointments WHERE user_id=${user.id} ORDER BY requested_at DESC LIMIT 50`;return json({appointments:rows.map(x=>({id:x.id,investmentId:x.investment_id,requestedAt:x.requested_at,timezone:x.timezone,channel:x.channel,note:x.note,status:x.status,meetingUrl:x.meeting_url,createdAt:x.created_at}))});
+    }
+    if (path === "mi-citas" && method === "POST") {
+      if(user.impersonated_by)return json({error:"El inversor debe confirmar personalmente la cita"},403);const b=await req.json().catch(()=>({})),when=new Date(b.requestedAt),now=Date.now();if(Number.isNaN(when.getTime())||when.getTime()<now+60*60*1000||when.getTime()>now+180*86400000)return json({error:"Selecciona una fecha futura válida dentro de los próximos 180 días"},400);const timezone=/^[A-Za-z_+\/-]{1,60}$/.test(String(b.timezone||""))?String(b.timezone):"Asia/Dubai",note=String(b.note||"").trim().slice(0,1000),id=uid("meet");await db.sql`INSERT INTO investor_appointments (id,user_id,investment_id,requested_at,timezone,channel,note) VALUES (${id},${user.id},${b.investmentId||null},${when.toISOString()},${timezone},'Videollamada',${note})`;try{const admins=await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','superadmin','equipo') AND activo=TRUE`;for(const a of admins)await notify(a.id,"cita_inversor","Nueva solicitud de videollamada",(user.name||user.username)+" solicita una cita para "+when.toLocaleString("es-ES"),b.investmentId||null);}catch(e){}return json({ok:true,id,status:"Solicitada"});
+    }
     if (path === "mi-informe-patrimonial" && method === "GET") {
       const rates={AED:1,EUR:4,USD:3.6725,SAR:1.02,GBP:4.68},aed=(n,c)=>(Number(n)||0)*(rates[c]||1),fmt=n=>Math.round(Number(n)||0).toLocaleString("es-ES")+" AED";
       const rows=await db.sql`SELECT id,capital,rentabilidad,modalidad,plazo_meses,fecha_inicio,fecha_fin,estado,moneda,proyecto,unidad,pagos,devoluciones FROM inversiones WHERE portal_user_id=${user.id} OR (email<>'' AND LOWER(email)=LOWER(${user.username})) ORDER BY fecha_inicio DESC`;
@@ -2439,6 +2472,22 @@ export default async (req) => {
       const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Informe patrimonial BRAVA</title><style>@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;background:#eef2f0;color:#10221c;font:14px/1.5 Arial,sans-serif}.sheet{max-width:980px;margin:24px auto;background:#fff;padding:42px;box-shadow:0 16px 55px #18382d22}.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #153d31;padding-bottom:24px}.head img{width:150px}.ey{color:#15805c;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}h1{font:32px Georgia,serif;margin:8px 0}.mut{color:#65746f}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:25px 0}.k{border:1px solid #dce5e1;border-radius:12px;padding:15px}.k span{display:block;color:#71807b;font-size:11px;text-transform:uppercase}.k b{display:block;font-size:19px;margin-top:7px}h2{font:22px Georgia,serif;margin:28px 0 12px}table{width:100%;border-collapse:collapse}th,td{padding:11px 8px;border-bottom:1px solid #e3e9e6;text-align:left}th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#71807b}.num{text-align:right}td small{display:block;color:#71807b}ul{list-style:none;padding:0}li{display:grid;grid-template-columns:95px 1fr auto;gap:12px;padding:11px 0;border-bottom:1px solid #e3e9e6}li span,li em{color:#71807b;font-style:normal}.note{margin-top:30px;padding:15px;background:#f2f7f5;border-left:3px solid #168660;color:#53625d}.foot{border-top:1px solid #dce5e1;margin-top:30px;padding-top:15px;font-size:11px;color:#71807b}@media(max-width:700px){.sheet{margin:0;padding:22px}.grid{grid-template-columns:1fr 1fr}.head{display:block}.head img{margin-bottom:18px}table{font-size:11px}li{grid-template-columns:1fr}th:nth-child(3),td:nth-child(3){display:none}}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none;padding:0}.no-print{display:none}}</style></head><body><main class="sheet"><header class="head"><img src="https://bravaae.com/brand/brava-investment-color.png" alt="BRAVA"><div><div class="ey">Informe patrimonial privado</div><h1>'+safeText(user.name||"Inversor")+'</h1><div class="mut">Generado el '+safeText(new Date().toLocaleDateString("es-ES"))+' · Datos registrados en el CRM</div></div></header><section class="grid"><div class="k"><span>Capital contractual</span><b>'+fmt(capital)+'</b></div><div class="k"><span>Capital aportado</span><b>'+fmt(paid)+'</b></div><div class="k"><span>Abonos registrados</span><b>'+fmt(returned)+'</b></div><div class="k"><span>Retorno proyectado</span><b>'+fmt(projected)+'</b></div></section><h2>Posición contractual</h2><table><thead><tr><th>Inversión</th><th>Estado</th><th>Inicio</th><th>Vencimiento</th><th class="num">Capital</th><th class="num">Retorno</th></tr></thead><tbody>'+table+'</tbody></table><h2>Próximos hitos</h2><ul>'+timeline+'</ul><div class="note"><b>Información importante.</b> Este informe es un resumen informativo generado a partir del CRM. Los importes de retorno son proyecciones contractuales, no saldos disponibles ni garantías de pago. En caso de discrepancia prevalecen los contratos y anexos firmados.</div><footer class="foot">Documento privado y confidencial · BRAVA Global Holding Limited · RAK ICC · Reg. ICC-2025-0508 · Dubai, UAE · business@bravaae.com</footer></main></body></html>';
       return new Response(html,{status:200,headers:{"content-type":"text/html; charset=utf-8","content-disposition":"inline; filename=brava-informe-patrimonial.html","cache-control":"private, no-store","x-content-type-options":"nosniff","x-robots-tag":"noindex, nofollow"}});
     }
+    if (path === "mi-expediente" && method === "GET") {
+      const investments=await db.sql`SELECT id,proyecto,unidad FROM inversiones WHERE portal_user_id=${user.id} OR (email<>'' AND LOWER(email)=LOWER(${user.username})) ORDER BY fecha_inicio DESC`;
+      const dossiers=[];for(const inv of investments){const x=await ensureInvestorChecklist(inv.id);dossiers.push({investmentId:inv.id,project:inv.proyecto||"Inversión",unit:inv.unidad||"",requirements:x.requirements,documents:x.documents});}
+      return json({dossiers});
+    }
+    if (seg[0] === "mi-expediente" && seg[1] && seg[2] === "upload" && method === "POST") {
+      if(user.impersonated_by)return json({error:"El inversor debe subir personalmente sus documentos"},403);
+      const [r]=await db.sql`SELECT q.*,i.email,i.portal_user_id FROM inversion_document_requirements q JOIN inversiones i ON i.id=q.inversion_id WHERE q.id=${seg[1]} AND (i.portal_user_id=${user.id} OR (i.email<>'' AND LOWER(i.email)=LOWER(${user.username})))`;
+      if(!r)return json({error:"Requisito no encontrado"},404);const b=await req.json().catch(()=>({})),name=String(b.name||"").trim().slice(0,180),type=String(b.type||"").toLowerCase(),allowed=["application/pdf","image/jpeg","image/png","image/webp"];
+      if(!name||!b.data||!allowed.includes(type))return json({error:"Adjunta un PDF, JPG, PNG o WebP válido"},400);const raw=String(b.data).includes(",")?String(b.data).split(",")[1]:String(b.data),size=Math.floor(raw.length*3/4);if(size>8*1024*1024)return json({error:"Documento demasiado grande (máx. 8 MB)"},400);
+      const documentId=uid("idoc"),key="inv/"+r.inversion_id+"/"+documentId;try{await docStore().set(key,Buffer.from(raw,"base64"));}catch(e){return json({error:"No se pudo guardar el documento"},500);}
+      await db.sql`INSERT INTO inversor_documentos (id,inversion_id,email,nombre,categoria,blob_key,tipo,size,subido_por) VALUES (${documentId},${r.inversion_id},${r.email||user.username},${name},${r.categoria||"Documento"},${key},${type},${size},${user.name||user.username})`;
+      await db.sql`UPDATE inversion_document_requirements SET document_id=${documentId},estado='Pendiente de revisión',nota=NULL,reviewed_at=NULL,reviewed_by=NULL,updated_at=NOW() WHERE id=${r.id}`;
+      await investorDocEvent(r.inversion_id,r.id,documentId,user,"Documento subido",name,req);try{const admins=await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','superadmin','equipo') AND activo=TRUE`;for(const a of admins)await notify(a.id,"documento_inversor","Documento pendiente de revisión",(user.name||user.username)+" ha subido "+r.titulo,r.inversion_id);}catch(e){}
+      return json({ok:true,documentId,status:"Pendiente de revisión"});
+    }
     /* Decisión de vencimiento y aceptación electrónica simple del inversor. */
     if (seg[0] === "mi-inversion" && seg[1] && seg[2] === "decision" && method === "POST") {
       if(user.impersonated_by) return json({error:"Por seguridad, la decisión contractual debe confirmarla personalmente el inversor"},403);
@@ -2447,6 +2496,7 @@ export default async (req) => {
       const b = await req.json().catch(()=>({}));
       const decision = ["continuar","propuesta","liquidar"].includes(b.decision) ? b.decision : "";
       if (!decision) return json({ error:"Selecciona una decisión válida" },400);
+      if(decision==="liquidar"){const dossier=await ensureInvestorChecklist(inv.id),missing=dossier.requirements.filter(x=>x.required&&x.status!=="Validado");if(missing.length)return json({error:"Antes de solicitar la liquidación, el equipo debe validar la documentación obligatoria pendiente: "+missing.map(x=>x.title).join(", ")},409);}
       const hito=String(b.hito||"vencimiento_final"), milestone=investmentMilestones(inv).find(h=>h.hito===hito);
       if(!milestone) return json({error:"Hito de inversión no válido"},400);
       if(hito==="primer_aniversario"&&decision==="propuesta") return json({error:"En el primer aniversario debes elegir entre liquidar o continuar"},400);
@@ -3974,6 +4024,22 @@ export default async (req) => {
       }
       return json({ ok: true, email, invitationUrl, url: portalUrl, userId, emailEnviado, subject:mail.subject, html:mail.html, expiresAt:inviteExpires });
     }
+    /* Expediente documental del inversor: checklist, revisión y auditoría. */
+    if (seg[0] === "inversiones" && seg[1] && seg[2] === "expediente" && method === "GET" && isInternal) {
+      const [inv]=await db.sql`SELECT id,inversor,email,portal_user_id FROM inversiones WHERE id=${seg[1]}`;if(!inv)return json({error:"Contrato no encontrado"},404);const x=await ensureInvestorChecklist(inv.id),events=await db.sql`SELECT actor_name,actor_role,tipo,detalle,created_at FROM inversion_document_events WHERE inversion_id=${inv.id} ORDER BY created_at DESC LIMIT 100`;return json({investment:inv,requirements:x.requirements,documents:x.documents,events});
+    }
+    if (seg[0] === "inversiones" && seg[1] && seg[2] === "expediente" && seg[3] && seg[4] === "review" && method === "POST" && isInternal) {
+      const b=await req.json().catch(()=>({})),states=["Validado","Rechazado","Pendiente de revisión"],state=states.includes(b.status)?b.status:"";if(!state)return json({error:"Estado de revisión no válido"},400);const [r]=await db.sql`SELECT q.*,i.portal_user_id FROM inversion_document_requirements q JOIN inversiones i ON i.id=q.inversion_id WHERE q.id=${seg[3]} AND q.inversion_id=${seg[1]}`;if(!r)return json({error:"Requisito no encontrado"},404);if(state==="Validado"&&!r.document_id)return json({error:"No se puede validar un requisito sin documento"},409);const note=String(b.note||"").trim().slice(0,1000),expires=/^\d{4}-\d{2}-\d{2}$/.test(String(b.expiresAt||""))?String(b.expiresAt):null;await db.sql`UPDATE inversion_document_requirements SET estado=${state},nota=${note||null},caduca_at=${expires},reviewed_at=NOW(),reviewed_by=${user.id},updated_at=NOW() WHERE id=${r.id}`;await investorDocEvent(r.inversion_id,r.id,r.document_id,user,"Revisión documental",state+(expires?" · caduca "+expires:"")+(note?" · "+note:""),req);if(r.portal_user_id)await notify(r.portal_user_id,"documento_inversor","Actualización de tu expediente",r.titulo+": "+state+(note?". "+note:""),r.inversion_id);return json({ok:true,status:state});
+    }
+    if (seg[0] === "inversiones" && seg[1] && seg[2] === "expediente" && seg[3] === "request" && method === "POST" && isInternal) {
+      const [inv]=await db.sql`SELECT id,portal_user_id FROM inversiones WHERE id=${seg[1]}`;if(!inv)return json({error:"Contrato no encontrado"},404);const x=await ensureInvestorChecklist(inv.id),pending=x.requirements.filter(r=>r.required&&r.status!=="Validado");if(!pending.length)return json({ok:true,requested:0});await db.sql`UPDATE inversion_document_requirements SET requested_at=NOW(),updated_at=NOW() WHERE inversion_id=${inv.id} AND obligatorio=TRUE AND estado<>'Validado'`;await investorDocEvent(inv.id,null,null,user,"Documentación solicitada",pending.map(r=>r.title).join(", "),req);if(inv.portal_user_id)await notify(inv.portal_user_id,"documentacion_pendiente","Documentación necesaria","Necesitamos que revises tu expediente y aportes: "+pending.map(r=>r.title).join(", "),inv.id);return json({ok:true,requested:pending.length});
+    }
+    if (seg[0] === "inversiones" && seg[1] && seg[2] === "citas" && method === "GET" && isInternal) {
+      const [inv]=await db.sql`SELECT portal_user_id FROM inversiones WHERE id=${seg[1]}`;if(!inv)return json({error:"Contrato no encontrado"},404);const rows=inv.portal_user_id?await db.sql`SELECT a.*,u.name AS assigned_name FROM investor_appointments a LEFT JOIN usuarios u ON u.id=a.assigned_user_id WHERE a.user_id=${inv.portal_user_id} ORDER BY a.requested_at DESC LIMIT 50`:[];return json({appointments:rows.map(a=>({id:a.id,requestedAt:a.requested_at,timezone:a.timezone,channel:a.channel,note:a.note,status:a.status,meetingUrl:a.meeting_url,assignedName:a.assigned_name}))});
+    }
+    if (seg[0] === "inversiones" && seg[1] && seg[2] === "citas" && seg[3] && method === "POST" && isInternal) {
+      const states=["Solicitada","Confirmada","Realizada","Cancelada"],b=await req.json().catch(()=>({})),status=states.includes(b.status)?b.status:"";if(!status)return json({error:"Estado de cita no válido"},400);const [a]=await db.sql`SELECT a.* FROM investor_appointments a JOIN inversiones i ON i.portal_user_id=a.user_id WHERE a.id=${seg[3]} AND i.id=${seg[1]}`;if(!a)return json({error:"Cita no encontrada"},404);const meetingUrl=/^https:\/\//.test(String(b.meetingUrl||""))?String(b.meetingUrl).slice(0,500):a.meeting_url;await db.sql`UPDATE investor_appointments SET status=${status},meeting_url=${meetingUrl||null},assigned_user_id=${user.id},updated_at=NOW() WHERE id=${a.id}`;await notify(a.user_id,"cita_inversor","Actualización de tu videollamada",status+(meetingUrl?" · El enlace está disponible en tu área privada":""),seg[1]);return json({ok:true});
+    }
     /* Documentos del inversor (subir/borrar) — solo interno */
     if (seg[0] === "inversiones" && seg[1] && seg[2] === "documentos" && isInternal) {
       const invId = seg[1];
@@ -3992,7 +4058,7 @@ export default async (req) => {
       }
       if (method === "DELETE" && seg[3]) {
         const [d] = await db.sql`SELECT blob_key FROM inversor_documentos WHERE id = ${seg[3]} AND inversion_id = ${invId}`;
-        if (d) { try { await docStore().delete(d.blob_key); } catch (e) {} await db.sql`DELETE FROM inversor_documentos WHERE id = ${seg[3]}`; }
+        if (d) { try { await docStore().delete(d.blob_key); } catch (e) {} await db.sql`UPDATE inversion_document_requirements SET document_id=NULL,estado='Pendiente',reviewed_at=NULL,reviewed_by=NULL,updated_at=NOW() WHERE inversion_id=${invId} AND document_id=${seg[3]}`;await db.sql`DELETE FROM inversor_documentos WHERE id = ${seg[3]}`;await investorDocEvent(invId,null,seg[3],user,"Documento eliminado","Eliminado desde back office",req); }
         return json({ ok: true });
       }
     }

@@ -154,6 +154,39 @@ test("el informe patrimonial se genera en servidor y exige la sesión del invers
   assert.match(portal, /\/api\/mi-informe-patrimonial/);
 });
 
+test("el expediente documental aplica checklist, revisión, auditoría y bloqueo de liquidación", async () => {
+  const [api, portal, crm] = await Promise.all([read("netlify/functions/api.mjs"), read("files/inversor.html"), read("files/crm.html")]);
+  assert.match(api, /inversion_document_requirements/);
+  assert.match(api, /inversion_document_events/);
+  assert.match(api, /path === "mi-expediente"/);
+  assert.match(api, /seg\[2\] === "upload"/);
+  assert.match(api, /Pendiente de revisión/);
+  assert.match(api, /Antes de solicitar la liquidación/);
+  assert.match(api, /seg\[4\] === "review"/);
+  assert.match(api, /Documentación solicitada/);
+  assert.match(api, /estado='Caducado'/);
+  assert.match(portal, /Expediente y validación/);
+  assert.match(portal, /Centro fiscal/);
+  assert.match(portal, /data-upload-req/);
+  assert.match(crm, /Solicitar pendientes por email/);
+  assert.match(crm, /data-reviewreq/);
+});
+
+test("las citas, el seguimiento del activo y el informe mensual completan la atención", async () => {
+  const [api, portal, crm, monthly] = await Promise.all([read("netlify/functions/api.mjs"), read("files/inversor.html"), read("files/crm.html"), read("netlify/functions/investor-monthly-reports.mjs")]);
+  assert.match(api, /investor_appointments/);
+  assert.match(api, /path === "mi-citas"/);
+  assert.match(api, /seguimiento/);
+  assert.match(portal, /Videollamadas con BRAVA/);
+  assert.match(portal, /Seguimiento del activo/);
+  assert.match(portal, /Saltar al contenido principal/);
+  assert.match(portal, /prefers-reduced-motion/);
+  assert.match(crm, /Videollamadas/);
+  assert.match(monthly, /schedule:"0 8 1 \* \*"/);
+  assert.match(monthly, /monthlySummary===false/);
+  assert.match(monthly, /Por privacidad/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

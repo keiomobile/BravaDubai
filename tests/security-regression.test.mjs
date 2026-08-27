@@ -107,3 +107,20 @@ test("el asistente del inversor usa sesión privada y contexto calculado en serv
   assert.match(portal, /api\('mi-asistente'/);
   assert.doesNotMatch(portal, /portal_user_id|inversor_documentos/);
 });
+
+test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
+  const [api, widget, crm, reminder] = await Promise.all([
+    read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),
+  ]);
+  assert.match(api, /path === "chat\/handoff"/);
+  assert.match(api, /path === "support\/inbox"/);
+  assert.match(api, /assigned_user_id/);
+  assert.match(widget, /Hablar con el equipo/);
+  assert.match(widget, /chat\/handoff/);
+  assert.match(widget, /Support assistant/);
+  assert.match(widget, /مساعد الدعم/);
+  assert.match(crm, /Centro de atención/);
+  assert.match(crm, /viewAtencion/);
+  assert.match(reminder, /schedule: "0 \* \* \* \*"/);
+  assert.match(reminder, /Chat pendiente de respuesta/);
+});

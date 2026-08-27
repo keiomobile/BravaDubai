@@ -132,6 +132,17 @@ test("el inversor gestiona perfil y solicitudes sensibles sin exponer datos banc
   assert.match(portal, /Solicitar videollamada/);
 });
 
+test("el resumen del inversor prioriza próximos pasos y cierra notificaciones", async () => {
+  const portal = await read("files/inversor.html");
+  assert.match(portal, /Tu centro de acciones/);
+  assert.match(portal, /Confirmar una decisión contractual/);
+  assert.match(portal, /Completar tu archivo documental/);
+  assert.match(portal, /Añadir un teléfono de contacto/);
+  assert.match(portal, /data-home-go/);
+  assert.match(portal, /notificaciones\/leidas/);
+  assert.match(portal, /Todo al día/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

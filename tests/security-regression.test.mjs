@@ -119,6 +119,8 @@ test("los chats se transfieren al CRM con bandeja unificada y control de SLA", a
   assert.match(api, /path === "commercial\/pipeline"/);
   assert.match(api, /path === "commercial\/pipeline\/auto"/);
   assert.match(api, /classifyAndRouteLead/);
+  assert.match(api, /seg\[3\] === "draft"/);
+  assert.match(api, /requiresHumanReview:true/);
   assert.match(api, /lead_score/);
   assert.match(api, /path === "commercial\/dossier"/);
   assert.match(api, /assigned_user_id/);
@@ -133,6 +135,9 @@ test("los chats se transfieren al CRM con bandeja unificada y control de SLA", a
   assert.match(crm, /Pipeline comercial/);
   assert.match(crm, /Clasificar pendientes con IA/);
   assert.match(crm, /Reclasificar con IA/);
+  assert.match(crm, /Preparar email/);
+  assert.match(crm, /Preparar WhatsApp/);
+  assert.match(crm, /Leads calientes/);
   assert.match(crm, /Enviar respuesta/);
   assert.match(crm, /Expediente 360º/);
   assert.match(reminder, /schedule: "0 \* \* \* \*"/);

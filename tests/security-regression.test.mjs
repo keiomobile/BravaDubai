@@ -96,3 +96,14 @@ test("las tres divisiones comparten chat contextual gobernado desde el CRM", asy
   assert.match(crm,/IA de soporte web/);
   assert.match(crm,/Mejorar prompt con IA/);
 });
+
+test("el asistente del inversor usa sesión privada y contexto calculado en servidor", async () => {
+  const [api, portal] = await Promise.all([read("netlify/functions/api.mjs"), read("files/inversor.html")]);
+  assert.match(api, /path === "mi-asistente"/);
+  assert.match(api, /portal_user_id=\$\{user\.id\}/);
+  assert.match(api, /CONTEXTO PRIVADO/);
+  assert.match(api, /No ejecutes decisiones, liquidaciones, firmas, transferencias o cambios/);
+  assert.match(portal, /Asistente privado BRAVA/);
+  assert.match(portal, /api\('mi-asistente'/);
+  assert.doesNotMatch(portal, /portal_user_id|inversor_documentos/);
+});

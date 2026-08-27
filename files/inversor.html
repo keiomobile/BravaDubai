@@ -420,7 +420,7 @@ function renderResumen(){
   var retornoAED=cs.reduce(function(s,c){var k=contractCalc(c);return s+k.accrued*(AEDPER[c.moneda]||1);},0);
   var proxVenc=cs.map(function(c){return c.fechaFin;}).filter(Boolean).sort()[0];
   var nm=(DATA.inversor&&DATA.inversor.nombre)||'';
-  var hero='<div class="eyebrow">Club privado de co-inversión</div><h2 class="big serif">Hola, '+esc(nm.split(' ')[0]||'inversor')+'.</h2><p class="lead">Esta es tu posición con BRAVA Global Holding Limited: lo que has aportado, cómo evoluciona y qué te queda por delante.</p>';
+  var hero='<div class="eyebrow">Club privado de co-inversión</div><h2 class="big serif">Hola, '+esc(nm.split(' ')[0]||'inversor')+'.</h2><p class="lead">Esta es tu posición con BRAVA Global Holding Limited: lo que has aportado, cómo evoluciona y qué te queda por delante.</p><button class="btn ghost sm" id="portfolioReport">Abrir informe patrimonial</button>';
   var kpis='<div class="kgrid">'
     +'<div class="kbox"><div class="k">Total invertido</div><div class="v">'+money(totalTicketAED)+'</div><div class="d">'+dualAEDUSD(totalTicketAED)+' · '+cs.length+' contrato'+(cs.length===1?'':'s')+'</div></div>'
     +'<div class="kbox"><div class="k">Capital aportado</div><div class="v">'+money(totalAportadoAED)+'</div><div class="d">'+dualAEDUSD(totalAportadoAED)+'</div></div>'
@@ -446,6 +446,7 @@ function renderResumen(){
   $('#pg-resumen').innerHTML='<div style="padding:22px 0 6px">'+hero+'</div>'+dueAlert+actionHtml+kpis
     +(cs.length?(chart+allocationHtml(cs)+'<h4 style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:6px 0 12px">Tus contratos</h4>'+mini):'<div class="card"><div class="empty">Aún no hay contratos vinculados a tu cuenta.</div></div>');
   var gd=$('[data-go-dec]');if(gd)gd.onclick=function(){showTab('decisiones');};
+  var pr=$('#portfolioReport');if(pr)pr.onclick=function(){openPrivateDoc('/api/mi-informe-patrimonial','brava-informe-patrimonial.html');};
   Array.prototype.forEach.call(document.querySelectorAll('[data-home-go]'),function(b){b.onclick=function(){showTab(b.getAttribute('data-home-go'));};});
 }
 

@@ -187,6 +187,18 @@ test("las citas, el seguimiento del activo y el informe mensual completan la ate
   assert.match(monthly, /Por privacidad/);
 });
 
+test("el CRM reúne las prioridades de inversores en un centro operativo privado", async () => {
+  const [api, crm] = await Promise.all([read("netlify/functions/api.mjs"), read("files/crm.html")]);
+  assert.match(api, /path === "investor-operations"/);
+  assert.match(api, /documentIssues/);
+  assert.match(api, /expiredDocuments/);
+  assert.match(api, /priority/);
+  assert.match(crm, /Centro operativo de inversores/);
+  assert.match(crm, /loadInvestorOperations/);
+  assert.match(crm, /Expedientes pendientes/);
+  assert.match(crm, /Citas solicitadas/);
+});
+
 test("los chats se transfieren al CRM con bandeja unificada y control de SLA", async () => {
   const [api, widget, crm, reminder] = await Promise.all([
     read("netlify/functions/api.mjs"), read("files/i18n.js"), read("files/crm.html"), read("netlify/functions/support-sla-reminders.mjs"),

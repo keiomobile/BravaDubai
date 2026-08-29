@@ -93,7 +93,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v56-2026-08-27-patrimonio";
+const SCHEMA_VERSION = "v57-2026-08-27-prestamos";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -154,6 +154,12 @@ async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS patrimonio_gastos (\n  id TEXT PRIMARY KEY, op_id TEXT REFERENCES operaciones(id) ON DELETE CASCADE,\n  categoria TEXT, concepto TEXT, periodicidad TEXT DEFAULT 'anual', importe BIGINT DEFAULT 0, moneda TEXT DEFAULT 'EUR',\n  fecha TEXT, proveedor TEXT, notas TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())");
   await db.pool.query("CREATE INDEX IF NOT EXISTS ix_patgastos_op ON patrimonio_gastos(op_id)");
   await db.pool.query("CREATE INDEX IF NOT EXISTS ix_docs_gasto ON documentos(gasto_id)");
+  /* ===== PRÉSTAMOS BANCARIOS: calendario de cuotas con confirmación de pago =====
+     El calendario se genera desde fecha_inicio + plazo_meses; los pagos confirmados
+     se guardan por periodo (YYYY-MM) en prestamo_pagos. Importes con céntimos (NUMERIC). */
+  await db.pool.query("CREATE TABLE IF NOT EXISTS prestamos (\n  id TEXT PRIMARY KEY, nombre TEXT, banco TEXT, importe NUMERIC(14,2) DEFAULT 0, moneda TEXT DEFAULT 'EUR',\n  cuota_mensual NUMERIC(14,2) DEFAULT 0, tipo_interes NUMERIC(6,3) DEFAULT 0, plazo_meses INT DEFAULT 0,\n  fecha_inicio TEXT, dia_pago INT DEFAULT 1, inmueble_op_id TEXT, notas TEXT, activo BOOLEAN DEFAULT TRUE,\n  created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE TABLE IF NOT EXISTS prestamo_pagos (\n  id TEXT PRIMARY KEY, prestamo_id TEXT REFERENCES prestamos(id) ON DELETE CASCADE,\n  periodo TEXT, importe NUMERIC(14,2) DEFAULT 0, pagado BOOLEAN DEFAULT TRUE, fecha_pago TEXT,\n  confirmado_por TEXT, notas TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(),\n  UNIQUE(prestamo_id, periodo))");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_prespagos_pres ON prestamo_pagos(prestamo_id)");
   /* Socios / accionariado del Holding (BRAVA Global Holding Limited). */
   await db.pool.query("CREATE TABLE IF NOT EXISTS socios (\n  id TEXT PRIMARY KEY, nombre TEXT, rol TEXT, acciones INT DEFAULT 0, capital INT DEFAULT 0,\n  nacionalidad TEXT, documento TEXT, domicilio TEXT, email TEXT, telefono TEXT,\n  estado TEXT DEFAULT 'activo', aportaciones JSONB DEFAULT '[]'::jsonb, orden INT DEFAULT 0, notas TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW())");
   /* Corretaje (Brava Exclusive Realty): operaciones de intermediación con comisión. */
@@ -895,6 +901,43 @@ function patResumen(op, gastos){
     rentabilidadPct: rentabilidadPct, nGastos: (gastos||[]).length };
 }
 function patGastoRow(r){ return { id:r.id, opId:r.op_id, categoria:r.categoria||"Otros", concepto:r.concepto||"", periodicidad:r.periodicidad||"anual", importe:Number(r.importe)||0, moneda:r.moneda||"EUR", fecha:r.fecha||"", proveedor:r.proveedor||"", notas:r.notas||"", createdAt:r.created_at }; }
+/* ===== PRÉSTAMOS: fila, calendario de cuotas y resumen ===== */
+function prestamoRow(r){ return { id:r.id, nombre:r.nombre||"", banco:r.banco||"", importe:Number(r.importe)||0, moneda:r.moneda||"EUR", cuotaMensual:Number(r.cuota_mensual)||0, tipoInteres:Number(r.tipo_interes)||0, plazoMeses:Number(r.plazo_meses)||0, fechaInicio:r.fecha_inicio||"", diaPago:Number(r.dia_pago)||1, inmuebleOpId:r.inmueble_op_id||"", notas:r.notas||"", activo:r.activo!==false, createdAt:r.created_at }; }
+function periodoAdd(periodo, n){ /* periodo 'YYYY-MM' + n meses */ const parts = String(periodo||"").split("-"); let y = parseInt(parts[0],10)||new Date().getFullYear(); let m = (parseInt(parts[1],10)||1) - 1 + n; y += Math.floor(m/12); m = ((m%12)+12)%12; return y + "-" + String(m+1).padStart(2,"0"); }
+function periodoHoy(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); }
+/* Genera el calendario de cuotas de un préstamo, fusionando los pagos confirmados. */
+function prestamoCalendario(p, pagosMap){
+  const inicio = (p.fechaInicio || periodoHoy()).slice(0,7);
+  const hoy = periodoHoy();
+  let count = p.plazoMeses > 0 ? p.plazoMeses : 0;
+  if (!count) { /* sin plazo: desde inicio hasta hoy + 12 meses */
+    let m = 0, cur = inicio; while (cur < periodoAdd(hoy, 12) && m < 600) { m++; cur = periodoAdd(inicio, m); } count = Math.max(m, 12);
+  }
+  count = Math.min(count, 600);
+  const cal = [];
+  for (let i = 0; i < count; i++) {
+    const periodo = periodoAdd(inicio, i);
+    const pg = pagosMap[periodo];
+    const pagado = pg ? pg.pagado !== false : false;
+    const vencido = !pagado && periodo < hoy;
+    cal.push({ periodo: periodo, n: i+1, importe: pg && pg.importe ? Number(pg.importe) : (p.cuotaMensual||0), pagado: pagado, vencido: vencido, fechaPago: (pg&&pg.fecha_pago)||"", notas: (pg&&pg.notas)||"", confirmadoPor: (pg&&pg.confirmado_por)||"" });
+  }
+  return cal;
+}
+function prestamoResumen(p, cal){
+  const hoy = periodoHoy();
+  let pagadas = 0, pagadoAcum = 0, pendientes = 0, vencidas = 0, pendienteImporte = 0;
+  let proximo = null;
+  cal.forEach(function(c){
+    if (c.pagado) { pagadas++; pagadoAcum += c.importe; }
+    else { pendientes++; pendienteImporte += c.importe; if (c.vencido) vencidas++; if (!proximo && c.periodo >= hoy) proximo = c.periodo; if (!proximo && c.vencido) proximo = c.periodo; }
+  });
+  if (!proximo) { const prim = cal.find(function(c){ return !c.pagado; }); proximo = prim ? prim.periodo : null; }
+  const totalCuotas = cal.length;
+  const capitalPrevisto = (p.cuotaMensual||0) * totalCuotas;
+  return { moneda: p.moneda||"EUR", cuotaMensual: p.cuotaMensual||0, totalCuotas: totalCuotas, cuotasPagadas: pagadas, cuotasPendientes: pendientes, cuotasVencidas: vencidas,
+    pagadoAcumulado: Math.round(pagadoAcum*100)/100, pendienteImporte: Math.round(pendienteImporte*100)/100, capitalPrevisto: Math.round(capitalPrevisto*100)/100, proximoPeriodo: proximo };
+}
 async function upsertLead(l){
   await db.sql`INSERT INTO leads (id,nombre,tel,email,mensaje,situacion,direccion,tipo,metros,zona,estado,cargas,precio_pide,oferta,prioridad,canal,fecha,estado_lead,origen,marca,ip,notas,assigned_user_id,next_action,next_action_at,potential_value,lead_score,ai_summary,ai_reason,ai_confidence,classified_at,updated_at)
     VALUES (${l.id},${l.nombre||""},${l.tel||""},${l.email||""},${l.mensaje||""},${l.situacion||""},${l.direccion||""},${l.tipo||""},${l.metros||0},${l.zona||""},${l.estado||""},${l.cargas||""},${l.precioPide||0},${l.oferta||""},${l.prioridad||"NORMAL"},${l.canal||""},${l.fecha||""},${l.estadoLead||"Nuevo"},${l.origen||""},${l.marca||"capital"},${l.ip||null},${l.notas||""},${l.assignedUserId||null},${l.nextAction||""},${l.nextActionAt||null},${l.potentialValue||0},${l.leadScore||0},${l.aiSummary||""},${l.aiReason||""},${l.aiConfidence||0},${l.classifiedAt||null},NOW())
@@ -3984,6 +4027,77 @@ export default async (req) => {
         return json({ ok: true });
       }
       return json({ error: "Ruta de patrimonio no válida" }, 404);
+    }
+
+    /* ============================================================
+       PRÉSTAMOS BANCARIOS — calendario de cuotas con confirmación de pago
+       Solo personal interno.
+       ============================================================ */
+    if (seg[0] === "prestamos") {
+      if (!isInternal) return json({ error: "Sin permiso" }, 403);
+      /* Lista con resumen por préstamo */
+      if (path === "prestamos" && method === "GET") {
+        const rows = await db.sql`SELECT * FROM prestamos ORDER BY activo DESC, created_at ASC`;
+        const pagosAll = await db.sql`SELECT * FROM prestamo_pagos`;
+        const byPres = {}; for (const pg of pagosAll) { (byPres[pg.prestamo_id] = byPres[pg.prestamo_id] || {})[pg.periodo] = pg; }
+        const prestamos = rows.map(function(r){
+          const p = prestamoRow(r);
+          const cal = prestamoCalendario(p, byPres[p.id] || {});
+          const res = prestamoResumen(p, cal);
+          return Object.assign({}, p, { resumen: res });
+        });
+        return json({ prestamos: prestamos });
+      }
+      /* Alta */
+      if (path === "prestamos" && method === "POST") {
+        const b = await req.json().catch(() => ({}));
+        if (!String(b.nombre||"").trim()) return json({ error: "Indica el nombre del préstamo" }, 400);
+        const id = uid("pres");
+        await db.sql`INSERT INTO prestamos (id,nombre,banco,importe,moneda,cuota_mensual,tipo_interes,plazo_meses,fecha_inicio,dia_pago,inmueble_op_id,notas,activo)
+          VALUES (${id},${String(b.nombre).slice(0,200)},${String(b.banco||"").slice(0,200)},${Number(b.importe)||0},${String(b.moneda||"EUR")},${Number(b.cuotaMensual)||0},${Number(b.tipoInteres)||0},${parseInt(b.plazoMeses,10)||0},${String(b.fechaInicio||"").slice(0,10)},${Math.min(31,Math.max(1,parseInt(b.diaPago,10)||1))},${b.inmuebleOpId||null},${String(b.notas||"").slice(0,2000)},${b.activo!==false})`;
+        return json({ ok: true, id });
+      }
+      /* Ficha: préstamo + calendario + resumen */
+      if (seg[1] && !seg[2] && method === "GET") {
+        const [r] = await db.sql`SELECT * FROM prestamos WHERE id = ${seg[1]}`;
+        if (!r) return json({ error: "No encontrado" }, 404);
+        const p = prestamoRow(r);
+        const pagos = await db.sql`SELECT * FROM prestamo_pagos WHERE prestamo_id = ${p.id}`;
+        const pmap = {}; for (const pg of pagos) pmap[pg.periodo] = pg;
+        const cal = prestamoCalendario(p, pmap);
+        return json({ prestamo: p, calendario: cal, resumen: prestamoResumen(p, cal) });
+      }
+      /* Edición */
+      if (seg[1] && !seg[2] && method === "PUT") {
+        const b = await req.json().catch(() => ({}));
+        const [r] = await db.sql`SELECT id FROM prestamos WHERE id = ${seg[1]}`;
+        if (!r) return json({ error: "No encontrado" }, 404);
+        await db.sql`UPDATE prestamos SET nombre=${String(b.nombre||"").slice(0,200)}, banco=${String(b.banco||"").slice(0,200)}, importe=${Number(b.importe)||0}, moneda=${String(b.moneda||"EUR")}, cuota_mensual=${Number(b.cuotaMensual)||0}, tipo_interes=${Number(b.tipoInteres)||0}, plazo_meses=${parseInt(b.plazoMeses,10)||0}, fecha_inicio=${String(b.fechaInicio||"").slice(0,10)}, dia_pago=${Math.min(31,Math.max(1,parseInt(b.diaPago,10)||1))}, inmueble_op_id=${b.inmuebleOpId||null}, notas=${String(b.notas||"").slice(0,2000)}, activo=${b.activo!==false}, updated_at=NOW() WHERE id=${seg[1]}`;
+        return json({ ok: true });
+      }
+      /* Baja */
+      if (seg[1] && !seg[2] && method === "DELETE") {
+        if (!isAdmin) return json({ error: "Solo un administrador puede eliminar un préstamo" }, 403);
+        await db.sql`DELETE FROM prestamos WHERE id = ${seg[1]}`;
+        return json({ ok: true });
+      }
+      /* Confirmar/quitar el pago de una cuota (por periodo YYYY-MM) */
+      if (seg[1] && seg[2] === "pago" && method === "POST") {
+        const b = await req.json().catch(() => ({}));
+        const [p] = await db.sql`SELECT id, cuota_mensual FROM prestamos WHERE id = ${seg[1]}`;
+        if (!p) return json({ error: "Préstamo no encontrado" }, 404);
+        const periodo = String(b.periodo||"").slice(0,7);
+        if (!/^\d{4}-\d{2}$/.test(periodo)) return json({ error: "Periodo inválido (AAAA-MM)" }, 400);
+        const pagado = b.pagado !== false;
+        const importe = (b.importe!=null && b.importe!=="") ? Number(b.importe) : Number(p.cuota_mensual)||0;
+        const fecha = pagado ? (String(b.fechaPago||"").slice(0,10) || new Date().toISOString().slice(0,10)) : "";
+        const id = uid("prpg");
+        await db.sql`INSERT INTO prestamo_pagos (id,prestamo_id,periodo,importe,pagado,fecha_pago,confirmado_por,notas)
+          VALUES (${id},${seg[1]},${periodo},${importe},${pagado},${fecha},${user.name},${String(b.notas||"").slice(0,500)})
+          ON CONFLICT (prestamo_id, periodo) DO UPDATE SET pagado=EXCLUDED.pagado, importe=EXCLUDED.importe, fecha_pago=EXCLUDED.fecha_pago, confirmado_por=EXCLUDED.confirmado_por, notas=EXCLUDED.notas, updated_at=NOW()`;
+        return json({ ok: true, periodo: periodo, pagado: pagado });
+      }
+      return json({ error: "Ruta de préstamos no válida" }, 404);
     }
 
     /* DOCUMENTOS de operaciones (guardados en base64 en la BD) */

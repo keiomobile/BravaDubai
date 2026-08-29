@@ -93,7 +93,7 @@ const SEED = {
 
 /* Crea las tablas usando el pool estándar de Postgres (más robusto que sql.unsafe) */
 /* Versión del esquema: si cambia el SCHEMA/ALTER/índices, súbela para forzar la migración. */
-const SCHEMA_VERSION = "v55-2026-08-27-launch-readiness";
+const SCHEMA_VERSION = "v56-2026-08-27-patrimonio";
 async function ensureSchema() {
   await db.pool.query("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)");
   /* Si el esquema ya está al día, evitamos repetir ~45 sentencias DDL en cada arranque en frío. */
@@ -144,6 +144,16 @@ async function ensureSchema() {
   for (const col of [ "moneda TEXT DEFAULT 'EUR'", "detalle JSONB DEFAULT '{}'::jsonb" ]) {
     await db.pool.query("ALTER TABLE operaciones ADD COLUMN IF NOT EXISTS " + col);
   }
+  /* ===== PATRIMONIO: inmuebles en propiedad (operaciones ejecutadas) =====
+     La operación ejecutada pasa a patrimonio: guarda estado de alquiler/renta en
+     el campo JSONB `patrimonio`, y sus gastos recurrentes/puntuales en la tabla
+     patrimonio_gastos. Los adjuntos (facturas, contratos) reutilizan `documentos`
+     con `gasto_id` para enlazarlos a un gasto concreto. */
+  await db.pool.query("ALTER TABLE operaciones ADD COLUMN IF NOT EXISTS patrimonio JSONB DEFAULT '{}'::jsonb");
+  await db.pool.query("ALTER TABLE documentos ADD COLUMN IF NOT EXISTS gasto_id TEXT");
+  await db.pool.query("CREATE TABLE IF NOT EXISTS patrimonio_gastos (\n  id TEXT PRIMARY KEY, op_id TEXT REFERENCES operaciones(id) ON DELETE CASCADE,\n  categoria TEXT, concepto TEXT, periodicidad TEXT DEFAULT 'anual', importe BIGINT DEFAULT 0, moneda TEXT DEFAULT 'EUR',\n  fecha TEXT, proveedor TEXT, notas TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_patgastos_op ON patrimonio_gastos(op_id)");
+  await db.pool.query("CREATE INDEX IF NOT EXISTS ix_docs_gasto ON documentos(gasto_id)");
   /* Socios / accionariado del Holding (BRAVA Global Holding Limited). */
   await db.pool.query("CREATE TABLE IF NOT EXISTS socios (\n  id TEXT PRIMARY KEY, nombre TEXT, rol TEXT, acciones INT DEFAULT 0, capital INT DEFAULT 0,\n  nacionalidad TEXT, documento TEXT, domicilio TEXT, email TEXT, telefono TEXT,\n  estado TEXT DEFAULT 'activo', aportaciones JSONB DEFAULT '[]'::jsonb, orden INT DEFAULT 0, notas TEXT,\n  created_at TIMESTAMPTZ DEFAULT NOW())");
   /* Corretaje (Brava Exclusive Realty): operaciones de intermediación con comisión. */
@@ -837,20 +847,54 @@ async function rgCrearPropiedadDesdeExpediente(e, user){
 }
 
 /* ---------- mapeos ---------- */
-function opRow(r){return{id:r.id,ref:r.ref,direccion:r.direccion,tipo:r.tipo,situacion:r.situacion,cliente:r.cliente,valorMercado:r.valor_mercado,compra:r.compra,reforma:r.reforma,ventaPrev:r.venta_prev,ventaReal:r.venta_real,estado:r.estado,pagado:r.pagado,notaria:r.notaria,fechaCompra:r.fecha_compra||"",financiacion:r.financiacion,responsable:r.responsable,costes:r.costes||{},coinversion:r.coinversion||[],pagos:r.pagos||[],reformaPartidas:r.reforma_partidas||[],colaborador:r.colaborador||"",moneda:r.moneda||"EUR",detalle:r.detalle||{}};}
+function opRow(r){return{id:r.id,ref:r.ref,direccion:r.direccion,tipo:r.tipo,situacion:r.situacion,cliente:r.cliente,valorMercado:r.valor_mercado,compra:r.compra,reforma:r.reforma,ventaPrev:r.venta_prev,ventaReal:r.venta_real,estado:r.estado,pagado:r.pagado,notaria:r.notaria,fechaCompra:r.fecha_compra||"",financiacion:r.financiacion,responsable:r.responsable,costes:r.costes||{},coinversion:r.coinversion||[],pagos:r.pagos||[],reformaPartidas:r.reforma_partidas||[],colaborador:r.colaborador||"",moneda:r.moneda||"EUR",detalle:r.detalle||{},patrimonio:r.patrimonio||{}};}
 function leadRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email||"",mensaje:r.mensaje||"",situacion:r.situacion,direccion:r.direccion,tipo:r.tipo,metros:r.metros,zona:r.zona,estado:r.estado,cargas:r.cargas,precioPide:r.precio_pide,oferta:r.oferta,prioridad:r.prioridad,canal:r.canal,fecha:r.fecha,estadoLead:r.estado_lead,origen:r.origen,marca:r.marca||"capital",notas:r.notas||"",assignedUserId:r.assigned_user_id||null,nextAction:r.next_action||"",nextActionAt:r.next_action_at||null,potentialValue:Number(r.potential_value)||0,leadScore:Number(r.lead_score)||0,aiSummary:r.ai_summary||"",aiReason:r.ai_reason||"",aiConfidence:Number(r.ai_confidence)||0,classifiedAt:r.classified_at||null,updatedAt:r.updated_at||r.created_at};}
 function cliRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email,tipo:r.tipo,viviendas:r.viviendas||[],ops:r.ops,marca:r.marca||"capital",notas:r.notas};}
 function coRow(r){return{id:r.id,nombre:r.nombre,tel:r.tel,email:r.email,perfil:r.perfil,zona:r.zona,aportados:r.aportados,cerrados:r.cerrados,comision:r.comision,estadoCol:r.estado_col,marca:r.marca||"capital",notas:r.notas||"",tipo:r.tipo||"Captador",documento:r.documento||"",nacionalidad:r.nacionalidad||"",modeloComision:r.modelo_comision||"",tarifa:Number(r.tarifa)||0,moneda:r.moneda||"AED",splitBrava:r.split_brava==null?50:r.split_brava,splitEquipo:r.split_equipo==null?50:r.split_equipo,reportaA:r.reporta_a||"",fechaInicio:r.fecha_inicio||"",condiciones:r.condiciones||""};}
 function tareaRow(r){return{id:r.id,titulo:r.titulo,tipo:r.tipo,fecha:r.fecha||"",estado:r.estado,ref:r.ref||"",notas:r.notas||""};}
-function docRow(r){return{id:r.id,opId:r.op_id,nombre:r.nombre,categoria:r.categoria,tipo:r.tipo,size:r.size,subidoPor:r.subido_por,fecha:r.fecha||""};}
+function docRow(r){return{id:r.id,opId:r.op_id,gastoId:r.gasto_id||null,nombre:r.nombre,categoria:r.categoria,tipo:r.tipo,size:r.size,subidoPor:r.subido_por,fecha:r.fecha||""};}
 function invRow(r){return{id:r.id,inversor:r.inversor,capital:r.capital,rentabilidad:Number(r.rentabilidad)||0,modalidad:r.modalidad||"Plazo",plazoMeses:r.plazo_meses||0,opId:r.op_id||"",opRef:r.op_ref||"",fechaInicio:r.fecha_inicio||"",fechaFin:r.fecha_fin||"",estado:r.estado||"Activa",pagos:r.pagos||[],notas:r.notas||"",nacionalidad:r.nacionalidad||"",documento:r.documento||"",email:r.email||"",telefono:r.telefono||"",domicilio:r.domicilio||"",moneda:r.moneda||"AED",proyecto:r.proyecto||"",unidad:r.unidad||"",envelope:r.envelope||"",rolInv:r.rol_inv||"coinversor",condiciones:r.condiciones||{},portalUserId:r.portal_user_id||null,devoluciones:r.devoluciones||[]};}
 
 /* ---------- upserts ---------- */
 async function upsertOp(o){
-  await db.sql`INSERT INTO operaciones (id,ref,direccion,tipo,situacion,cliente,valor_mercado,compra,reforma,venta_prev,venta_real,estado,pagado,notaria,fecha_compra,financiacion,responsable,costes,coinversion,pagos,reforma_partidas,colaborador,moneda,detalle,updated_at)
-    VALUES (${o.id},${o.ref||""},${o.direccion||""},${o.tipo||""},${o.situacion||""},${o.cliente||""},${o.valorMercado||0},${o.compra||0},${o.reforma||0},${o.ventaPrev||0},${o.ventaReal||0},${o.estado||""},${o.pagado||0},${o.notaria||"pendiente"},${o.fechaCompra||""},${o.financiacion||""},${o.responsable||""},${JSON.stringify(o.costes||{})}::jsonb,${JSON.stringify(o.coinversion||[])}::jsonb,${JSON.stringify(o.pagos||[])}::jsonb,${JSON.stringify(o.reformaPartidas||[])}::jsonb,${o.colaborador||""},${o.moneda||"EUR"},${JSON.stringify(o.detalle||{})}::jsonb,NOW())
-    ON CONFLICT (id) DO UPDATE SET ref=EXCLUDED.ref,direccion=EXCLUDED.direccion,tipo=EXCLUDED.tipo,situacion=EXCLUDED.situacion,cliente=EXCLUDED.cliente,valor_mercado=EXCLUDED.valor_mercado,compra=EXCLUDED.compra,reforma=EXCLUDED.reforma,venta_prev=EXCLUDED.venta_prev,venta_real=EXCLUDED.venta_real,estado=EXCLUDED.estado,pagado=EXCLUDED.pagado,notaria=EXCLUDED.notaria,fecha_compra=EXCLUDED.fecha_compra,financiacion=EXCLUDED.financiacion,responsable=EXCLUDED.responsable,costes=EXCLUDED.costes,coinversion=EXCLUDED.coinversion,pagos=EXCLUDED.pagos,reforma_partidas=EXCLUDED.reforma_partidas,colaborador=EXCLUDED.colaborador,moneda=EXCLUDED.moneda,detalle=EXCLUDED.detalle,updated_at=NOW()`;
+  await db.sql`INSERT INTO operaciones (id,ref,direccion,tipo,situacion,cliente,valor_mercado,compra,reforma,venta_prev,venta_real,estado,pagado,notaria,fecha_compra,financiacion,responsable,costes,coinversion,pagos,reforma_partidas,colaborador,moneda,detalle,patrimonio,updated_at)
+    VALUES (${o.id},${o.ref||""},${o.direccion||""},${o.tipo||""},${o.situacion||""},${o.cliente||""},${o.valorMercado||0},${o.compra||0},${o.reforma||0},${o.ventaPrev||0},${o.ventaReal||0},${o.estado||""},${o.pagado||0},${o.notaria||"pendiente"},${o.fechaCompra||""},${o.financiacion||""},${o.responsable||""},${JSON.stringify(o.costes||{})}::jsonb,${JSON.stringify(o.coinversion||[])}::jsonb,${JSON.stringify(o.pagos||[])}::jsonb,${JSON.stringify(o.reformaPartidas||[])}::jsonb,${o.colaborador||""},${o.moneda||"EUR"},${JSON.stringify(o.detalle||{})}::jsonb,${JSON.stringify(o.patrimonio||{})}::jsonb,NOW())
+    ON CONFLICT (id) DO UPDATE SET ref=EXCLUDED.ref,direccion=EXCLUDED.direccion,tipo=EXCLUDED.tipo,situacion=EXCLUDED.situacion,cliente=EXCLUDED.cliente,valor_mercado=EXCLUDED.valor_mercado,compra=EXCLUDED.compra,reforma=EXCLUDED.reforma,venta_prev=EXCLUDED.venta_prev,venta_real=EXCLUDED.venta_real,estado=EXCLUDED.estado,pagado=EXCLUDED.pagado,notaria=EXCLUDED.notaria,fecha_compra=EXCLUDED.fecha_compra,financiacion=EXCLUDED.financiacion,responsable=EXCLUDED.responsable,costes=EXCLUDED.costes,coinversion=EXCLUDED.coinversion,pagos=EXCLUDED.pagos,reforma_partidas=EXCLUDED.reforma_partidas,colaborador=EXCLUDED.colaborador,moneda=EXCLUDED.moneda,detalle=EXCLUDED.detalle,patrimonio=EXCLUDED.patrimonio,updated_at=NOW()`;
 }
+/* ===== PATRIMONIO: constantes y cálculo de resultado por inmueble ===== */
+const PATRIMONIO_CATS = ["IBI","Impuestos","Comunidad","Administración","Seguro","Alarma","Luz","Agua","Gas","Internet/Telefonía","Mantenimiento","Reparaciones","Hipoteca","Gestoría","Basuras","Otros"];
+const PATRIMONIO_PERIODOS = ["mensual","trimestral","anual","puntual"];
+const PAT_AEDPER = { AED:1, EUR:4.0, USD:3.6725, SAR:1.02, GBP:4.68 };
+function patConv(n, from, to){ n = Number(n)||0; const aed = n * (PAT_AEDPER[from]||1); return aed / (PAT_AEDPER[to]||1); }
+function patAnnualFactor(periodo){ return periodo==="mensual"?12:(periodo==="trimestral"?4:(periodo==="anual"?1:0)); }
+/* Una operación es "patrimonio" si se marca explícitamente o si está ejecutada
+   (comprada y en cartera). "Vendida" deja de ser patrimonio salvo marca manual. */
+function esPatrimonio(op){
+  const p = op.patrimonio || {};
+  if (p.esPatrimonio === true) return true;
+  if (p.esPatrimonio === false) return false;
+  return ["Comprada","Reforma","En venta"].indexOf(op.estado) > -1;
+}
+/* Resultado anual del inmueble, normalizado a su moneda (la de la operación). */
+function patResumen(op, gastos){
+  const cur = op.moneda || "EUR";
+  const p = op.patrimonio || {};
+  const rentaMensual = p.alquilado ? patConv(p.renta||0, p.rentaMoneda||cur, cur) : 0;
+  const ingresoAnual = rentaMensual * 12;
+  let gastoRecurrenteAnual = 0, gastoPuntual = 0;
+  (gastos||[]).forEach(function(g){
+    const imp = patConv(g.importe||0, g.moneda||cur, cur);
+    const f = patAnnualFactor(g.periodicidad);
+    if (f > 0) gastoRecurrenteAnual += imp * f; else gastoPuntual += imp;
+  });
+  const netoAnual = ingresoAnual - gastoRecurrenteAnual;
+  const base = Number(op.valorMercado)||Number(op.compra)||0;
+  const rentabilidadPct = base > 0 ? Math.round((netoAnual / base) * 1000) / 10 : null;
+  return { moneda: cur, alquilado: !!p.alquilado, rentaMensual: Math.round(rentaMensual), ingresoAnual: Math.round(ingresoAnual),
+    gastoRecurrenteAnual: Math.round(gastoRecurrenteAnual), gastoPuntual: Math.round(gastoPuntual), netoAnual: Math.round(netoAnual),
+    rentabilidadPct: rentabilidadPct, nGastos: (gastos||[]).length };
+}
+function patGastoRow(r){ return { id:r.id, opId:r.op_id, categoria:r.categoria||"Otros", concepto:r.concepto||"", periodicidad:r.periodicidad||"anual", importe:Number(r.importe)||0, moneda:r.moneda||"EUR", fecha:r.fecha||"", proveedor:r.proveedor||"", notas:r.notas||"", createdAt:r.created_at }; }
 async function upsertLead(l){
   await db.sql`INSERT INTO leads (id,nombre,tel,email,mensaje,situacion,direccion,tipo,metros,zona,estado,cargas,precio_pide,oferta,prioridad,canal,fecha,estado_lead,origen,marca,ip,notas,assigned_user_id,next_action,next_action_at,potential_value,lead_score,ai_summary,ai_reason,ai_confidence,classified_at,updated_at)
     VALUES (${l.id},${l.nombre||""},${l.tel||""},${l.email||""},${l.mensaje||""},${l.situacion||""},${l.direccion||""},${l.tipo||""},${l.metros||0},${l.zona||""},${l.estado||""},${l.cargas||""},${l.precioPide||0},${l.oferta||""},${l.prioridad||"NORMAL"},${l.canal||""},${l.fecha||""},${l.estadoLead||"Nuevo"},${l.origen||""},${l.marca||"capital"},${l.ip||null},${l.notas||""},${l.assignedUserId||null},${l.nextAction||""},${l.nextActionAt||null},${l.potentialValue||0},${l.leadScore||0},${l.aiSummary||""},${l.aiReason||""},${l.aiConfidence||0},${l.classifiedAt||null},NOW())
@@ -3859,16 +3903,106 @@ export default async (req) => {
       }
     }
 
+    /* ============================================================
+       PATRIMONIO — inmuebles en propiedad (operaciones ejecutadas)
+       Solo personal interno. Gastos con adjuntos y resultado por inmueble.
+       ============================================================ */
+    if (seg[0] === "patrimonio") {
+      if (!isInternal) return json({ error: "Sin permiso" }, 403);
+      /* Catálogos (categorías y periodicidades) para la UI */
+      if (path === "patrimonio/meta" && method === "GET") {
+        return json({ categorias: PATRIMONIO_CATS, periodicidades: PATRIMONIO_PERIODOS, monedas: ["EUR","AED","USD","GBP","SAR"] });
+      }
+      /* Lista de inmuebles en propiedad con su resultado anual */
+      if (path === "patrimonio" && method === "GET") {
+        const rows = await db.sql`SELECT * FROM operaciones ORDER BY fecha_compra DESC NULLS LAST, updated_at DESC`;
+        const ops = rows.map(opRow).filter(esPatrimonio);
+        const gall = await db.sql`SELECT * FROM patrimonio_gastos`;
+        const byOp = {}; for (const g of gall) { (byOp[g.op_id] = byOp[g.op_id] || []).push(patGastoRow(g)); }
+        const inmuebles = ops.map(function(o){
+          const gs = byOp[o.id] || [];
+          const res = patResumen(o, gs);
+          return { id:o.id, ref:o.ref, direccion:o.direccion, tipo:o.tipo, estado:o.estado, moneda:o.moneda,
+            valorMercado:o.valorMercado, compra:o.compra, fechaCompra:o.fechaCompra,
+            alquilado:res.alquilado, rentaMensual:res.rentaMensual, inquilino:(o.patrimonio&&o.patrimonio.inquilino)||"",
+            ingresoAnual:res.ingresoAnual, gastoRecurrenteAnual:res.gastoRecurrenteAnual, gastoPuntual:res.gastoPuntual,
+            netoAnual:res.netoAnual, rentabilidadPct:res.rentabilidadPct, nGastos:res.nGastos };
+        });
+        return json({ inmuebles: inmuebles });
+      }
+      /* Ficha de un inmueble: operación + gastos + adjuntos + resultado */
+      if (seg[1] && !seg[2] && method === "GET") {
+        const [r] = await db.sql`SELECT * FROM operaciones WHERE id = ${seg[1]}`;
+        if (!r) return json({ error: "No encontrado" }, 404);
+        const o = opRow(r);
+        const gs = (await db.sql`SELECT * FROM patrimonio_gastos WHERE op_id = ${o.id} ORDER BY created_at DESC`).map(patGastoRow);
+        const docs = (await db.sql`SELECT id,op_id,gasto_id,nombre,categoria,tipo,size,subido_por,fecha FROM documentos WHERE op_id = ${o.id} ORDER BY created_at DESC`).map(docRow);
+        return json({ inmueble: o, gastos: gs, docs: docs, resumen: patResumen(o, gs) });
+      }
+      /* Marcar/actualizar atributos de patrimonio (alquiler, renta, etc.) */
+      if (seg[1] && !seg[2] && method === "POST") {
+        const b = await req.json().catch(() => ({}));
+        const [r] = await db.sql`SELECT * FROM operaciones WHERE id = ${seg[1]}`;
+        if (!r) return json({ error: "No encontrado" }, 404);
+        const prev = (r.patrimonio && typeof r.patrimonio === "object") ? r.patrimonio : {};
+        const p = Object.assign({}, prev);
+        if ("esPatrimonio" in b) p.esPatrimonio = !!b.esPatrimonio;
+        if ("alquilado" in b) p.alquilado = !!b.alquilado;
+        if ("renta" in b) p.renta = Math.max(0, parseInt(b.renta, 10) || 0);
+        if ("rentaMoneda" in b) p.rentaMoneda = String(b.rentaMoneda || r.moneda || "EUR");
+        if ("inquilino" in b) p.inquilino = String(b.inquilino || "").slice(0, 200);
+        if ("contratoInicio" in b) p.contratoInicio = String(b.contratoInicio || "").slice(0, 10);
+        if ("contratoFin" in b) p.contratoFin = String(b.contratoFin || "").slice(0, 10);
+        if ("notas" in b) p.notas = String(b.notas || "").slice(0, 2000);
+        await db.sql`UPDATE operaciones SET patrimonio = ${JSON.stringify(p)}::jsonb, updated_at = NOW() WHERE id = ${seg[1]}`;
+        return json({ ok: true, patrimonio: p });
+      }
+      /* Alta de gasto */
+      if (seg[1] && seg[2] === "gastos" && !seg[3] && method === "POST") {
+        const b = await req.json().catch(() => ({}));
+        const [op] = await db.sql`SELECT id, moneda FROM operaciones WHERE id = ${seg[1]}`;
+        if (!op) return json({ error: "Inmueble no encontrado" }, 404);
+        const cat = PATRIMONIO_CATS.indexOf(b.categoria) > -1 ? b.categoria : "Otros";
+        const per = PATRIMONIO_PERIODOS.indexOf(b.periodicidad) > -1 ? b.periodicidad : "anual";
+        const id = uid("pgto");
+        await db.sql`INSERT INTO patrimonio_gastos (id,op_id,categoria,concepto,periodicidad,importe,moneda,fecha,proveedor,notas)
+          VALUES (${id},${op.id},${cat},${String(b.concepto||"").slice(0,200)},${per},${Math.max(0,parseInt(b.importe,10)||0)},${String(b.moneda||op.moneda||"EUR")},${String(b.fecha||"").slice(0,10)},${String(b.proveedor||"").slice(0,200)},${String(b.notas||"").slice(0,1000)})`;
+        return json({ ok: true, id });
+      }
+      /* Edición de gasto */
+      if (seg[1] && seg[2] === "gastos" && seg[3] && method === "PUT") {
+        const b = await req.json().catch(() => ({}));
+        const cat = PATRIMONIO_CATS.indexOf(b.categoria) > -1 ? b.categoria : "Otros";
+        const per = PATRIMONIO_PERIODOS.indexOf(b.periodicidad) > -1 ? b.periodicidad : "anual";
+        await db.sql`UPDATE patrimonio_gastos SET categoria=${cat}, concepto=${String(b.concepto||"").slice(0,200)}, periodicidad=${per}, importe=${Math.max(0,parseInt(b.importe,10)||0)}, moneda=${String(b.moneda||"EUR")}, fecha=${String(b.fecha||"").slice(0,10)}, proveedor=${String(b.proveedor||"").slice(0,200)}, notas=${String(b.notas||"").slice(0,1000)}, updated_at=NOW() WHERE id=${seg[3]} AND op_id=${seg[1]}`;
+        return json({ ok: true });
+      }
+      /* Baja de gasto (y sus adjuntos) */
+      if (seg[1] && seg[2] === "gastos" && seg[3] && method === "DELETE") {
+        await db.sql`DELETE FROM documentos WHERE gasto_id = ${seg[3]}`;
+        await db.sql`DELETE FROM patrimonio_gastos WHERE id = ${seg[3]} AND op_id = ${seg[1]}`;
+        return json({ ok: true });
+      }
+      return json({ error: "Ruta de patrimonio no válida" }, 404);
+    }
+
     /* DOCUMENTOS de operaciones (guardados en base64 en la BD) */
     if (seg[0] === "docs") {
       if (method === "GET" && !seg[1]) {
+        const gastoId = url.searchParams.get("gasto") || "";
+        if (gastoId) {
+          if (!isInternal) return json({ error: "Sin permiso" }, 403);
+          const rows = await db.sql`SELECT id,op_id,gasto_id,nombre,categoria,tipo,size,subido_por,fecha FROM documentos WHERE gasto_id = ${gastoId} ORDER BY created_at DESC`;
+          return json({ docs: rows.map(docRow) });
+        }
         const opId = url.searchParams.get("op") || "";
         if (!opId) return json({ docs: [] });
         if (!isInternal) {
           const [op] = await db.sql`SELECT cliente FROM operaciones WHERE id = ${opId}`;
           if (!op || op.cliente !== user.name) return json({ error: "Sin permiso" }, 403);
         }
-        const rows = await db.sql`SELECT id,op_id,nombre,categoria,tipo,size,subido_por,fecha FROM documentos WHERE op_id = ${opId} ORDER BY created_at DESC`;
+        /* Solo documentos a nivel de operación (no los enlazados a un gasto). */
+        const rows = await db.sql`SELECT id,op_id,gasto_id,nombre,categoria,tipo,size,subido_por,fecha FROM documentos WHERE op_id = ${opId} AND gasto_id IS NULL ORDER BY created_at DESC`;
         return json({ docs: rows.map(docRow) });
       }
       if (method === "POST" && !seg[1]) {
@@ -3879,8 +4013,8 @@ export default async (req) => {
         const size = Math.floor(raw.length * 3 / 4);
         if (size > 5 * 1024 * 1024) return json({ error: "Archivo demasiado grande (máx 5 MB)" }, 400);
         const id = uid("doc");
-        await db.sql`INSERT INTO documentos (id,op_id,nombre,categoria,tipo,size,subido_por,fecha,data)
-          VALUES (${id},${b.opId},${b.nombre},${b.categoria||"Otros"},${b.tipo||""},${size},${user.name},${new Date().toISOString().slice(0,10)},${raw})`;
+        await db.sql`INSERT INTO documentos (id,op_id,gasto_id,nombre,categoria,tipo,size,subido_por,fecha,data)
+          VALUES (${id},${b.opId},${b.gastoId||null},${b.nombre},${b.categoria||"Otros"},${b.tipo||""},${size},${user.name},${new Date().toISOString().slice(0,10)},${raw})`;
         return json({ ok: true, id });
       }
       if (method === "GET" && seg[1]) {

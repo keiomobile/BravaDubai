@@ -791,6 +791,7 @@ var NAV={
     {id:'dashboard',t:'Resumen',ic:'grid',div:'capital'},
     {id:'operaciones',t:'Operaciones',ic:'deal',div:'capital'},
     {id:'patrimonio',t:'Patrimonio',ic:'building',div:'capital'},
+    {id:'prestamos',t:'Préstamos',ic:'wallet',div:'capital'},
     {id:'leads',t:'Leads',ic:'inbox',badge:true,div:'capital'},
     {id:'coinversion',t:'Coinversión',ic:'split',div:'capital'},
     {id:'tesoreria',t:'Tesorería y caja',ic:'wallet',div:'capital'},
@@ -830,6 +831,7 @@ var NAV={
     {id:'dashboard',t:'Resumen',ic:'grid',div:'capital'},
     {id:'operaciones',t:'Operaciones',ic:'deal',div:'capital'},
     {id:'patrimonio',t:'Patrimonio',ic:'building',div:'capital'},
+    {id:'prestamos',t:'Préstamos',ic:'wallet',div:'capital'},
     {id:'leads',t:'Leads',ic:'inbox',badge:true,div:'capital'},
     {id:'fiscal',t:'Comparador fiscal',ic:'chart',div:'capital'},
     {sec:'Brava Real Estate',div:'realestate'},
@@ -885,6 +887,7 @@ NAV.superadmin=[
     {id:'dashboard',t:'Resumen',ic:'grid',div:'capital'},
   {id:'operaciones',t:'Operaciones',ic:'deal',div:'capital'},
   {id:'patrimonio',t:'Patrimonio',ic:'building',div:'capital'},
+  {id:'prestamos',t:'Préstamos',ic:'wallet',div:'capital'},
   {id:'leads',t:'Leads',ic:'inbox',badge:true,div:'capital'},
   {id:'coinversion',t:'Coinversión',ic:'split',div:'capital'},
   {id:'tesoreria',t:'Tesorería y caja',ic:'wallet',div:'capital'},
@@ -5213,11 +5216,97 @@ function patGastoDocs(opId, gastoId){
 }
 
 /* ============================================================
+   PRÉSTAMOS BANCARIOS — calendario de cuotas y control de pagos
+   ============================================================ */
+var PR_MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function prCur(n,cur){ cur=cur||'EUR'; var s=(Number(n)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}); return cur==='EUR'?(s+' €'):(s+' '+cur); }
+function prMes(periodo){ var p=String(periodo||'').split('-'); return PR_MESES[(parseInt(p[1],10)||1)-1]+" '"+(p[0]||'').slice(2); }
+/* Parseo de importe en formato español (1.360,08) o simple (1360.08 / 85000) */
+function prNum(s){ s=String(s==null?'':s).trim().replace(/\s|€/g,''); if(!s)return 0; if(s.indexOf(',')>-1){ s=s.replace(/\./g,'').replace(',','.'); } return Number(s)||0; }
+function viewPrestamos(){
+  main.innerHTML=topbar('Préstamos bancarios','Calendario de cuotas · control de pagos mes a mes','<button class="btn" id="prNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Nuevo préstamo</button>')
+    +'<div id="prKpis" class="kpis" style="margin-bottom:14px"></div>'
+    +'<div class="card"><div class="card-body"><table><thead><tr><th>Préstamo</th><th class="hide-sm">Banco</th><th class="num hide-sm">Importe</th><th class="num">Cuota</th><th>Pagadas</th><th class="hide-sm">Próximo</th></tr></thead><tbody id="prRows"><tr><td colspan="6"><div class="tsub" style="padding:12px">Cargando…</div></td></tr></tbody></table></div></div>';
+  var nb=$('#prNew'); if(nb)nb.onclick=function(){ prestamoForm(null); };
+  apiG('/prestamos').then(function(r){
+    var list=(r.data&&r.data.prestamos)||[];
+    var tb=$('#prRows'); if(!tb)return;
+    if(!list.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty"><h3>Sin préstamos</h3><p>Añade tus préstamos bancarios con "Nuevo préstamo".</p></div></td></tr>'; $('#prKpis').innerHTML=''; return; }
+    var cuotaTot=0,pend=0,venc=0;
+    list.forEach(function(p){ var s=p.resumen||{}; if(p.moneda==='EUR'){ cuotaTot+=p.cuotaMensual||0; pend+=s.pendienteImporte||0; } venc+=s.cuotasVencidas||0; });
+    $('#prKpis').innerHTML=kpi('Préstamos',String(list.length),'activos','split','flat','')
+      +kpi('Cuota mensual',prCur(cuotaTot,'EUR'),'suma en €','wallet','flat','')
+      +kpi('Pendiente',prCur(pend,'EUR'),'por pagar (€)','chart','flat','')
+      +kpi('Cuotas vencidas',String(venc),(venc?'requieren atención':'al día'),'inbox',(venc?'down':'up'),'');
+    tb.innerHTML=list.map(function(p){ var s=p.resumen||{}; return '<tr data-pr="'+esc(p.id)+'" style="cursor:pointer"><td><div class="tname">'+esc(p.nombre||'—')+'</div><div class="tsub">'+esc(p.banco||'')+'</div></td><td class="hide-sm">'+esc(p.banco||'—')+'</td><td class="num hide-sm">'+prCur(p.importe,p.moneda)+'</td><td class="num">'+prCur(p.cuotaMensual,p.moneda)+'</td><td>'+(s.cuotasPagadas||0)+' / '+(s.totalCuotas||0)+(s.cuotasVencidas?' <span class="chip c-neg">'+s.cuotasVencidas+' venc.</span>':'')+'</td><td class="hide-sm">'+(s.proximoPeriodo?prMes(s.proximoPeriodo):'—')+'</td></tr>'; }).join('');
+    $$('#prRows [data-pr]').forEach(function(el){ el.onclick=function(){ openPrestamo(el.getAttribute('data-pr')); }; });
+  }).catch(function(){ var tb=$('#prRows'); if(tb)tb.innerHTML='<tr><td colspan="6"><div class="tsub" style="padding:12px;color:var(--neg)">No se pudieron cargar los préstamos.</div></td></tr>'; });
+}
+function openPrestamo(id){
+  apiG('/prestamos/'+id).then(function(r){
+    if(!r.ok){ toast('No se pudo abrir'); return; }
+    var p=r.data.prestamo, cal=r.data.calendario||[], s=r.data.resumen||{};
+    var resHtml='<div class="kpis" style="margin-bottom:12px">'
+      +kpi('Cuota mensual',prCur(p.cuotaMensual,p.moneda),(p.tipoInteres?('interés '+p.tipoInteres+'%'):'mensual'),'wallet','flat','')
+      +kpi('Pagado',prCur(s.pagadoAcumulado,p.moneda),(s.cuotasPagadas||0)+' cuotas','chart','up','')
+      +kpi('Pendiente',prCur(s.pendienteImporte,p.moneda),(s.cuotasPendientes||0)+' cuotas','split','flat','')
+      +kpi('Vencidas',String(s.cuotasVencidas||0),(s.cuotasVencidas?'impagadas':'al día'),'inbox',(s.cuotasVencidas?'down':'up'),'')
+      +'</div>';
+    var datos='<div class="drow"><span class="dk">Banco</span><span class="dv">'+esc(p.banco||'—')+'</span></div>'
+      +'<div class="drow"><span class="dk">Importe del préstamo</span><span class="dv">'+prCur(p.importe,p.moneda)+'</span></div>'
+      +'<div class="drow"><span class="dk">Plazo</span><span class="dv">'+(p.plazoMeses?(p.plazoMeses+' meses'):'—')+'</span></div>'
+      +'<div class="drow"><span class="dk">Inicio · día de pago</span><span class="dv">'+(p.fechaInicio?fdate(p.fechaInicio):'—')+' · día '+(p.diaPago||1)+'</span></div>'
+      +(p.notas?'<div class="drow"><span class="dk">Notas</span><span class="dv">'+esc(p.notas)+'</span></div>':'');
+    /* Calendario agrupado por año */
+    var byYear={}; cal.forEach(function(c){ var y=c.periodo.slice(0,4); (byYear[y]=byYear[y]||[]).push(c); });
+    var years=Object.keys(byYear).sort();
+    var calHtml='<div class="section-title">Calendario de cuotas <span class="tsub">(toca un mes para marcar pagado / pendiente)</span></div>';
+    years.forEach(function(y){
+      calHtml+='<div style="margin:6px 0 4px;font-weight:700;font-size:13px;color:var(--grey)">'+y+'</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+        +byYear[y].map(function(c){
+          var bg=c.pagado?'var(--pos-bg)':(c.vencido?'var(--neg-bg)':'var(--paper)');
+          var col=c.pagado?'var(--pos)':(c.vencido?'var(--neg)':'var(--ink2)');
+          var bd=c.pagado?'var(--pos)':(c.vencido?'var(--neg)':'var(--line)');
+          return '<button class="prmes" data-prmes="'+esc(c.periodo)+'" data-pagado="'+(c.pagado?'1':'0')+'" title="'+prCur(c.importe,p.moneda)+'" style="border:1px solid '+bd+';background:'+bg+';color:'+col+';border-radius:9px;padding:7px 9px;font-size:12px;font-weight:600;cursor:pointer;min-width:74px;text-align:center">'
+            +(c.pagado?'✓ ':(c.vencido?'! ':''))+prMes(c.periodo)+'<div style="font-size:10px;font-weight:500;opacity:.8">'+prCur(c.importe,p.moneda)+'</div></button>';
+        }).join('')
+        +'</div>';
+    });
+    openModal(p.nombre||'Préstamo', (p.banco||'')+' · '+prCur(p.cuotaMensual,p.moneda)+'/mes', resHtml+'<div class="section-title">Datos</div>'+datos+calHtml,
+      [{t:'Cerrar',cls:'ghost',fn:closeModal},{t:'Editar',cls:'ghost',fn:function(){ prestamoForm(p); }}].concat(canDelete(SESSION.role)?[{t:'Eliminar',cls:'del',fn:function(){ confirmDelete('este préstamo',p.nombre||'',function(){ apiPP('/prestamos/'+id,'DELETE').then(function(rr){ if(rr.ok){ toast('Préstamo eliminado'); closeModal(); go('prestamos'); } else toast((rr.data&&rr.data.error)||'No se pudo'); }); }); }}]:[]));
+    $$('#modalCard [data-prmes]').forEach(function(b){ b.onclick=function(){ var per=b.getAttribute('data-prmes'); var yaPag=b.getAttribute('data-pagado')==='1'; apiPP('/prestamos/'+id+'/pago','POST',{periodo:per,pagado:!yaPag}).then(function(rr){ if(rr.ok){ openPrestamo(id); } else toast((rr.data&&rr.data.error)||'No se pudo actualizar'); }); }; });
+  }).catch(function(){ toast('Error al cargar el préstamo'); });
+}
+function prestamoForm(p){
+  p=p||{};
+  openModal(p.id?'Editar préstamo':'Nuevo préstamo','',
+    fields([
+      ['nombre','Nombre (ej. Préstamo Guadarrama)',p.nombre||'','text','full'],
+      ['banco','Banco',p.banco||'','text','full'],
+      ['importe','Importe del préstamo (ej. 85000)',p.importe||'','text'],
+      ['moneda','Moneda',p.moneda||'EUR','select:EUR,AED,USD,GBP'],
+      ['cuotaMensual','Cuota mensual (ej. 1.360,08)',p.cuotaMensual||'','text'],
+      ['tipoInteres','Tipo de interés (% anual)',p.tipoInteres||'','text'],
+      ['plazoMeses','Plazo (meses)',p.plazoMeses||'','number'],
+      ['fechaInicio','Fecha de inicio (AAAA-MM-DD)',p.fechaInicio||'','text'],
+      ['diaPago','Día de pago (1-31)',p.diaPago||'1','number'],
+      ['notas','Notas',p.notas||'','text','full']
+    ]),
+    [{t:'Cancelar',cls:'ghost',fn:function(){ p.id?openPrestamo(p.id):go('prestamos'); }},{t:p.id?'Guardar':'Crear préstamo',cls:'',fn:function(){
+      var v=collect(); if(!v.nombre){ toast('Indica el nombre del préstamo'); return; }
+      var payload={ nombre:v.nombre, banco:v.banco||'', importe:prNum(v.importe), moneda:v.moneda||'EUR', cuotaMensual:prNum(v.cuotaMensual), tipoInteres:prNum(v.tipoInteres), plazoMeses:parseInt(v.plazoMeses,10)||0, fechaInicio:v.fechaInicio||'', diaPago:parseInt(v.diaPago,10)||1, notas:v.notas||'' };
+      var pr=p.id?apiPP('/prestamos/'+p.id,'PUT',payload):apiPP('/prestamos','POST',payload);
+      pr.then(function(rr){ if(rr.ok){ toast('Préstamo guardado'); closeModal(); if(p.id)openPrestamo(p.id); else go('prestamos'); } else toast((rr.data&&rr.data.error)||'No se pudo guardar'); });
+    }}]);
+}
+
+/* ============================================================
    ROUTER
    ============================================================ */
 var VIEWS={
   dashboard:viewDashboard, operaciones:viewOperaciones, leads:viewLeads, tareas:viewTareas, atencion:viewAtencion, pipeline:viewPipeline, clientes:viewClientes, colaboradores:viewColaboradores, facturacion:viewFacturacion, tesoreria:viewTesoreria, coinversion:viewCoinversion, accionariado:viewAccionariado, corretaje:viewCorretaje, deuda:viewDeuda, fiscal:viewFiscal, promotores:viewPromotores, solicitudes_inv:viewSolicitudesInv, comunicaciones:viewComunicaciones,
-  usuarios:viewUsuarios, ajustes:viewAjustes, contratos:viewContratos, propiedades:viewPropiedadesAdmin, rentagarantizada:viewRentaGarantizada, solicitudes_re:viewSolicitudesRE, mensajes:viewMensajes, mail:viewMail, patrimonio:viewPatrimonio,
+  usuarios:viewUsuarios, ajustes:viewAjustes, contratos:viewContratos, propiedades:viewPropiedadesAdmin, rentagarantizada:viewRentaGarantizada, solicitudes_re:viewSolicitudesRE, mensajes:viewMensajes, mail:viewMail, patrimonio:viewPatrimonio, prestamos:viewPrestamos,
   contactos_re:function(){ viewContactos('realestate'); }, contactos_gar:function(){ viewContactos('garentto'); }, rgcartera:viewRgCartera, re_resumen:viewResumenRE, agenda:viewAgenda,
   c_inicio:viewClienteInicio, c_viviendas:viewClienteViviendas, c_ofertas:viewClienteOfertas,
   co_inicio:viewColabInicio, co_oportunidades:viewColabOportunidades, co_comisiones:viewColabComisiones,

@@ -37,23 +37,6 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opa
 .hero h1.reveal{transition-delay:.04s}
 .hero .sub.reveal{transition-delay:.13s}
 .hero-cta.reveal{transition-delay:.22s}
-/* Grupos que revelan sus tarjetas en cascada (cine, no todo a la vez). */
-.rows.reveal,.pf.reveal,.hero-meta.reveal{opacity:1;transform:none;transition:none}
-.rows .row,.pf .pf-item,.hero-meta .m{opacity:0;transform:translateY(20px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out)}
-.rows.in .row,.pf.in .pf-item,.hero-meta.in .m{opacity:1;transform:none}
-.rows.in .row:nth-child(2){transition-delay:.08s}
-.rows.in .row:nth-child(3){transition-delay:.16s}
-.rows.in .row:nth-child(4){transition-delay:.24s}
-.pf.in .pf-item:nth-child(2){transition-delay:.06s}
-.pf.in .pf-item:nth-child(3){transition-delay:.12s}
-.pf.in .pf-item:nth-child(4){transition-delay:.18s}
-.pf.in .pf-item:nth-child(5){transition-delay:.24s}
-.hero-meta.in .m:nth-child(2){transition-delay:.06s}
-.hero-meta.in .m:nth-child(3){transition-delay:.12s}
-.hero-meta.in .m:nth-child(4){transition-delay:.18s}
-@media(prefers-reduced-motion:reduce){
-  .rows .row,.pf .pf-item,.hero-meta .m{opacity:1;transform:none;transition:none}
-}
 
 /* Nav */
 header{position:fixed;top:0;left:0;right:0;z-index:40;transition:.4s}

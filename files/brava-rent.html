@@ -19,9 +19,11 @@
     <a href="/" class="brand"><img src="/brand/brava-rent-white.png" alt="Brava Rent"></a>
     <nav class="nav-mid">
       <a href="/#casa">La casa</a>
-      <a href="/brava-real-estate.html">Real Estate</a>
-      <a href="/brava-rent.html" style="color:var(--ink)">Brava Rent</a>
-      <a href="#como">Cómo funciona</a>
+      <a href="/brava-real-estate">Real Estate</a>
+      <a href="/propiedades">Propiedades</a>
+      <a href="/promociones">Promociones</a>
+      <a href="/brava-rent" class="on">Brava Rent</a>
+      <a href="/simulador-fiscal">Simulador fiscal</a>
     </nav>
     <div class="nav-r">
       <div class="lang" id="lang"><button data-lang="es" class="on">ES</button><span class="sep">·</span><button data-lang="en">EN</button><span class="sep">·</span><button data-lang="ar">ع</button></div>
@@ -32,7 +34,7 @@
 </header>
 <nav class="nav-mobile" id="navMobile">
   <button class="close" id="navClose">✕</button>
-  <a href="/#casa">La casa</a><a href="/brava-real-estate.html">Real Estate</a><a href="/brava-rent.html">Brava Rent</a><a href="#como">Cómo funciona</a><a href="#contacto" style="color:var(--green)">Solicitar estudio</a>
+  <a href="/#casa">La casa</a><a href="/brava-real-estate">Real Estate</a><a href="/propiedades">Propiedades</a><a href="/promociones">Promociones</a><a href="/brava-rent" class="on">Brava Rent</a><a href="/simulador-fiscal">Simulador fiscal</a><a href="#contacto" class="cta">Solicitar estudio</a>
 </nav>
 
 <!-- HERO -->
@@ -123,9 +125,11 @@
 <script>
 var header=document.getElementById('header');
 addEventListener('scroll',function(){header.classList.toggle('scrolled',scrollY>30)});
-document.getElementById('burger').onclick=function(){document.getElementById('navMobile').classList.add('open')};
-document.getElementById('navClose').onclick=function(){document.getElementById('navMobile').classList.remove('open')};
-document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){document.getElementById('navMobile').classList.remove('open')}});
+var _burger=document.getElementById('burger'),_nav=document.getElementById('navMobile');
+function _navSet(o){_nav.classList.toggle('open',o);_burger.classList.toggle('x',o);document.body.style.overflow=o?'hidden':'';}
+_burger.onclick=function(){_navSet(!_nav.classList.contains('open'));};
+document.getElementById('navClose').onclick=function(){_navSet(false);};
+document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){_navSet(false);};});
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.15});
 document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
 document.getElementById('rentForm').addEventListener('submit',function(e){e.preventDefault();var f=e.target,msg=document.getElementById('rentMsg');var data={nombre:f.nombre.value.trim(),email:f.email.value.trim(),telefono:(f.prefijo.value+' '+f.telefono.value).trim(),direccion:f.direccion.value.trim(),marca:'garentto',origen:'Landing · Brava Rent'};msg.className='form-msg';var btn=f.querySelector('button');btn.disabled=true;btn.textContent='Enviando…';fetch('/api/lead-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(function(r){return r.json().catch(function(){return{}})}).then(function(res){if(res&&res.ok){f.reset();msg.className='form-msg ok';msg.textContent='✓ Solicitud recibida. Te enviamos tu estudio en breve.';}else{msg.className='form-msg err';msg.textContent=(res&&res.error)||'No se pudo enviar.';}}).catch(function(){msg.className='form-msg err';msg.textContent='Error de conexión.';}).finally(function(){btn.disabled=false;btn.innerHTML='Solicitar estudio <span>→</span>';});});

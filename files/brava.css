@@ -6,6 +6,10 @@
   --sans:'General Sans',-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   --serif:'Zodiak','Canela',Georgia,'Times New Roman',serif;
   --pad:clamp(20px,5vw,64px); --maxw:1320px;
+  /* Curvas de movimiento (skill animate): más carácter que las nativas. */
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-in-out:cubic-bezier(.77,0,.175,1);
+  --ease-drawer:cubic-bezier(.32,.72,0,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -27,8 +31,29 @@ body::before{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opa
 .eyebrow{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);font-weight:600;display:inline-flex;align-items:center;gap:10px}
 .eyebrow::before{content:"";width:22px;height:1px;background:var(--green)}
 .serif{font-family:var(--serif);font-weight:400}
-.reveal{opacity:0;transform:translateY(26px);transition:opacity 1s cubic-bezier(.2,.7,.2,1),transform 1s cubic-bezier(.2,.7,.2,1)}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
 .reveal.in{opacity:1;transform:none}
+/* Entrada del hero en cascada al cargar. */
+.hero h1.reveal{transition-delay:.04s}
+.hero .sub.reveal{transition-delay:.13s}
+.hero-cta.reveal{transition-delay:.22s}
+/* Grupos que revelan sus tarjetas en cascada (cine, no todo a la vez). */
+.rows.reveal,.pf.reveal,.hero-meta.reveal{opacity:1;transform:none;transition:none}
+.rows .row,.pf .pf-item,.hero-meta .m{opacity:0;transform:translateY(20px);transition:opacity .7s var(--ease-out),transform .7s var(--ease-out)}
+.rows.in .row,.pf.in .pf-item,.hero-meta.in .m{opacity:1;transform:none}
+.rows.in .row:nth-child(2){transition-delay:.08s}
+.rows.in .row:nth-child(3){transition-delay:.16s}
+.rows.in .row:nth-child(4){transition-delay:.24s}
+.pf.in .pf-item:nth-child(2){transition-delay:.06s}
+.pf.in .pf-item:nth-child(3){transition-delay:.12s}
+.pf.in .pf-item:nth-child(4){transition-delay:.18s}
+.pf.in .pf-item:nth-child(5){transition-delay:.24s}
+.hero-meta.in .m:nth-child(2){transition-delay:.06s}
+.hero-meta.in .m:nth-child(3){transition-delay:.12s}
+.hero-meta.in .m:nth-child(4){transition-delay:.18s}
+@media(prefers-reduced-motion:reduce){
+  .rows .row,.pf .pf-item,.hero-meta .m{opacity:1;transform:none;transition:none}
+}
 
 /* Nav */
 header{position:fixed;top:0;left:0;right:0;z-index:40;transition:.4s}
@@ -45,10 +70,21 @@ header.scrolled{background:rgba(6,7,10,.72);backdrop-filter:blur(16px);border-bo
 .lang button:hover{color:var(--ink)}
 .lang button.on{color:var(--green)}
 .lang .sep{color:var(--faint);align-self:center}
-.access{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;padding:11px 22px;border:1px solid var(--line);border-radius:100px;transition:.3s;display:inline-flex;align-items:center;gap:8px}
-.access:hover{border-color:var(--green);color:var(--green)}
+.access{position:relative;overflow:hidden;isolation:isolate;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;padding:11px 22px;border:1px solid var(--line);border-radius:100px;color:var(--ink-dim);display:inline-flex;align-items:center;gap:8px;transition:color .3s var(--ease-out),border-color .3s var(--ease-out),transform .3s var(--ease-out)}
+.access::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(120% 150% at 50% 130%,var(--green-glow),transparent 70%);opacity:0;transition:opacity .35s var(--ease-out)}
+.access:active{transform:scale(.97);transition-duration:.14s}
+@media(hover:hover) and (pointer:fine){
+  .access:hover{border-color:var(--green);color:var(--green);transform:translateY(-1px)}
+  .access:hover::before{opacity:1}
+}
+/* Menu activo (pagina actual) */
+.nav-mid a.on{color:var(--ink)}
+.nav-mid a.on::after{width:100%}
 .burger{display:none;flex-direction:column;gap:5px;background:none;border:0;cursor:pointer;padding:10px;margin-right:-10px}
-.burger span{width:22px;height:1.5px;background:var(--ink);transition:.25s}
+.burger span{width:22px;height:1.5px;background:var(--ink);transition:transform .3s var(--ease-out),opacity .2s var(--ease-out)}
+.burger.x span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.burger.x span:nth-child(2){opacity:0}
+.burger.x span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
 .nav-mobile{display:none}
 
 /* Hero */
@@ -61,10 +97,24 @@ header.scrolled{background:rgba(6,7,10,.72);backdrop-filter:blur(16px);border-bo
 .hero h1 em{font-style:italic;color:var(--green)}
 .hero .sub{max-width:52ch;color:var(--ink-dim);font-size:clamp(15px,1.5vw,18px);margin-top:26px;line-height:1.65}
 .hero-cta{display:flex;align-items:center;gap:26px;margin-top:40px;flex-wrap:wrap}
-.btn-lead{background:var(--green);color:#03130c;font-size:14px;font-weight:600;letter-spacing:.02em;padding:16px 30px;border-radius:100px;display:inline-flex;align-items:center;gap:10px;transition:.3s;border:1px solid var(--green)}
-.btn-lead:hover{background:transparent;color:var(--green)}
-.link-arrow{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--ink-dim);display:inline-flex;align-items:center;gap:9px;transition:.25s}
-.link-arrow:hover{color:var(--ink);gap:14px}
+/* CTA primaria: profundidad de gradiente, halo esmeralda y barrido de luz.
+   Solo transform/opacity/box-shadow para no tocar layout. */
+.btn-lead{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(135deg,#25d99a,#12a774);color:#03130c;font-size:14px;font-weight:600;letter-spacing:.02em;padding:16px 30px;border-radius:100px;display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.16);box-shadow:0 6px 20px -6px var(--green-glow),inset 0 1px 0 rgba(255,255,255,.28);transition:transform .35s var(--ease-out),box-shadow .35s var(--ease-out)}
+.btn-lead span{transition:transform .35s var(--ease-out)}
+.btn-lead::before{content:"";position:absolute;top:0;left:-125%;width:65%;height:100%;z-index:-1;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);transition:left .6s var(--ease-out);pointer-events:none}
+.btn-lead:active{transform:scale(.97);transition-duration:.14s}
+@media(hover:hover) and (pointer:fine){
+  .btn-lead:hover{transform:translateY(-2px);box-shadow:0 16px 36px -8px var(--green-glow),inset 0 1px 0 rgba(255,255,255,.34)}
+  .btn-lead:hover span{transform:translateX(4px)}
+  .btn-lead:hover::before{left:135%}
+}
+/* Enlace-flecha: subrayado esmeralda que se despliega. */
+.link-arrow{position:relative;font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--ink-dim);display:inline-flex;align-items:center;gap:9px;transition:color .25s var(--ease-out),gap .25s var(--ease-out)}
+.link-arrow::after{content:"";position:absolute;left:0;bottom:-5px;width:0;height:1px;background:var(--green);transition:width .3s var(--ease-out)}
+@media(hover:hover) and (pointer:fine){
+  .link-arrow:hover{color:var(--ink);gap:13px}
+  .link-arrow:hover::after{width:100%}
+}
 .hero-meta{display:grid;grid-template-columns:repeat(4,auto);gap:clamp(30px,6vw,80px);margin-top:clamp(50px,9vh,110px);padding-top:30px;border-top:1px solid var(--line);width:fit-content}
 .hero-meta .m b{font-family:var(--serif);font-size:clamp(30px,3.6vw,50px);font-weight:500;display:block;line-height:1}
 .hero-meta .m span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:10px;display:block}
@@ -155,18 +205,35 @@ footer{padding:80px 0 44px;position:relative;z-index:2}
 .foot a:hover{color:var(--green)}
 .foot-b{display:flex;justify-content:space-between;padding-top:26px;color:var(--faint);font-size:12px;flex-wrap:wrap;gap:12px}
 
-@media(max-width:900px){
+/* Nav completa hasta 1080px; por debajo, hamburguesa (tablet incluida) para
+   que los 6 apartados quepan sin apelotonarse. */
+@media(max-width:1080px){
   .nav-mid{display:none}
   .burger{display:flex}
-  /* En movil, la CTA ancha del header se retira: el menu ya la ofrece en
-     verde y evitamos que la cabecera se apelotone en pantallas pequenas. */
+  /* En movil la CTA ancha del header se retira: el menu ya la ofrece. */
   header .access{display:none}
+  .nav-mobile{position:fixed;inset:0;z-index:60;background:radial-gradient(120% 90% at 50% 0,rgba(24,185,129,.09),transparent 55%),var(--bg);display:none;flex-direction:column;justify-content:center;gap:4px;padding:40px}
+  .nav-mobile.open{display:flex}
+  .nav-mobile a{font-family:var(--serif);font-size:clamp(30px,8vw,40px);color:var(--ink);padding:8px 0;opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease-out),transform .5s var(--ease-out),color .2s var(--ease-out)}
+  .nav-mobile.open a{opacity:1;transform:none}
+  .nav-mobile.open a:nth-of-type(1){transition-delay:.05s}
+  .nav-mobile.open a:nth-of-type(2){transition-delay:.10s}
+  .nav-mobile.open a:nth-of-type(3){transition-delay:.15s}
+  .nav-mobile.open a:nth-of-type(4){transition-delay:.20s}
+  .nav-mobile.open a:nth-of-type(5){transition-delay:.25s}
+  .nav-mobile.open a:nth-of-type(6){transition-delay:.30s}
+  .nav-mobile.open a:nth-of-type(7){transition-delay:.36s}
+  .nav-mobile a.on{color:var(--green)}
+  .nav-mobile a.cta{margin-top:16px;font-family:var(--sans);font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--green);border:1px solid var(--green);border-radius:100px;padding:15px 28px;align-self:flex-start}
+  .nav-mobile .close{position:absolute;top:24px;right:24px;font-size:26px;line-height:1;background:none;border:0;color:var(--ink);width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+}
+@media(max-width:900px){
   .hero-meta{grid-template-columns:1fr 1fr}
   .foot{grid-template-columns:1fr 1fr}
-  .nav-mobile{position:fixed;inset:0;z-index:60;background:var(--bg);display:none;flex-direction:column;justify-content:center;gap:8px;padding:40px}
-  .nav-mobile.open{display:flex}
-  .nav-mobile a{font-family:var(--serif);font-size:34px;color:var(--ink);padding:8px 0}
-  .nav-mobile .close{position:absolute;top:30px;right:30px;font-size:30px;background:none;border:0;color:var(--ink)}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav-mobile a{opacity:1!important;transform:none!important;transition:color .2s}
+  .btn-lead::before{display:none}
 }
 
 @media(max-width:640px){
@@ -205,8 +272,6 @@ select option{background:#0c0f14;color:var(--ink)}
    Antes solo los campos de formulario tenían estado de foco; los enlaces y CTA no. */
 a:focus-visible,button:focus-visible,.access:focus-visible,.btn-lead:focus-visible,.link-arrow:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:8px}
 .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid var(--green);outline-offset:2px}
-/* Realimentación táctil al pulsar los CTA (empuje físico de 1px). */
-.btn-lead:active,.access:active{transform:translateY(1px)}
 
 /* Cartera: variación sutil por tarjeta (misma familia oscura + único acento
    esmeralda) para dar ritmo visual mientras el equipo sube los renders reales

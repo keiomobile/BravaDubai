@@ -65,10 +65,12 @@
   <div class="wrap nav">
     <a href="/" class="brand"><img src="/brand/brava-investment-white.png" alt="Brava"></a>
     <nav class="nav-mid">
-      <a href="/#casa" data-i18n="nav_house">La casa</a>
-      <a href="/brava-real-estate.html" data-i18n="nav_re">Real Estate</a>
-      <a href="/brava-rent.html" data-i18n="nav_rent">Brava Rent</a>
-      <a href="/simulador-fiscal.html" style="color:var(--ink)">Simulador fiscal</a>
+      <a href="/#casa">La casa</a>
+      <a href="/brava-real-estate">Real Estate</a>
+      <a href="/propiedades">Propiedades</a>
+      <a href="/promociones">Promociones</a>
+      <a href="/brava-rent">Brava Rent</a>
+      <a href="/simulador-fiscal" class="on">Simulador fiscal</a>
     </nav>
     <div class="nav-r">
       <div class="lang" id="lang" data-noi18n><button data-lang="es" class="on">ES</button><span class="sep">·</span><button data-lang="en">EN</button><span class="sep">·</span><button data-lang="ar">ع</button></div>
@@ -79,7 +81,7 @@
 </header>
 <nav class="nav-mobile" id="navMobile">
   <button class="close" id="navClose">✕</button>
-  <a href="/#casa">La casa</a><a href="/brava-real-estate.html">Real Estate</a><a href="/brava-rent.html">Brava Rent</a><a href="/simulador-fiscal.html">Simulador fiscal</a><a href="#lead" style="color:var(--green)">Solicitar acceso</a>
+  <a href="/#casa">La casa</a><a href="/brava-real-estate">Real Estate</a><a href="/propiedades">Propiedades</a><a href="/promociones">Promociones</a><a href="/brava-rent">Brava Rent</a><a href="/simulador-fiscal" class="on">Simulador fiscal</a><a href="#lead" class="cta">Solicitar acceso</a>
 </nav>
 
 <section class="sec fiscal-sec">
@@ -133,9 +135,11 @@
 <script>
 var header=document.getElementById('header');
 addEventListener('scroll',function(){header.classList.toggle('scrolled',scrollY>30)});
-document.getElementById('burger').onclick=function(){document.getElementById('navMobile').classList.add('open')};
-document.getElementById('navClose').onclick=function(){document.getElementById('navMobile').classList.remove('open')};
-document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){document.getElementById('navMobile').classList.remove('open')}});
+var _burger=document.getElementById('burger'),_nav=document.getElementById('navMobile');
+function _navSet(o){_nav.classList.toggle('open',o);_burger.classList.toggle('x',o);document.body.style.overflow=o?'hidden':'';}
+_burger.onclick=function(){_navSet(!_nav.classList.contains('open'));};
+document.getElementById('navClose').onclick=function(){_navSet(false);};
+document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){_navSet(false);};});
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
 document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
 

@@ -8,8 +8,9 @@
   --paper:#070709; --white:#0e1512; --ink:#f5f6f6; --ink2:#c9d1cd;
   --grey:#9aa3a0; --grey2:#79827c;
   --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.055);
-  --accent:#1e9e5e; --accent2:#23b56c; --gold:#1e9e5e; --sand:#1e9e5e;
-  --pos:#1e9e5e; --pos-bg:rgba(30,158,94,.14);
+  --accent:#18b981; --accent2:#23c78b; --gold:#18b981; --sand:#18b981;
+  --pos:#18b981; --pos-bg:rgba(24,185,129,.14);
+  --green-glow:rgba(24,185,129,.30); --ease-out:cubic-bezier(.23,1,.32,1);
   --neg:#dd4b4b; --neg-bg:rgba(221,75,75,.14);
   --panel:#0e1512; --panel2:#0c110f; --bg:#070709; --card:#0e1512;
   --warn:#e0a63a; --warn-bg:rgba(224,166,58,.14); --info:#4aa3e0; --info-bg:rgba(74,163,224,.14);
@@ -21,15 +22,23 @@ label,.label{color:var(--ink2)!important}
 
 /* Superficies claras -> paneles oscuros */
 [style*="background:#fff"],[style*="background: #fff"],[style*="background:#ffffff"]{background:var(--white)!important}
+/* Tarjetas y controles del template heredado que fijaban fondo blanco por
+   clase (no por atributo style): opciones del asistente, chips, botones de
+   control. Se llevan a panel oscuro para no romper el contraste. */
+.copt,.chip,.call,.mbar .call,.hnav button,.t-ctrl button,.wiz-close,.chat-close{background:var(--white)!important;color:var(--ink)!important;border-color:var(--line)!important}
 
 /* Campos de formulario */
 input,select,textarea{background:#0a0d0c!important;border-color:var(--line)!important;color:var(--ink)!important}
 input::placeholder,textarea::placeholder{color:var(--grey2)!important}
 select option{background:#0e1512;color:var(--ink)}
 
-/* Botones sólidos que usaban --ink de fondo -> verde Brava */
-.btn:not(.ghost):not(.btn-ghost):not(.pill),.navbtn,.nav-access,.wa,.okc{background:var(--accent)!important;color:#fff!important;border-color:transparent!important}
-.btn:not(.ghost):not(.btn-ghost):hover,.navbtn:hover,.nav-access:hover{background:var(--accent2)!important}
+/* Botones sólidos -> lenguaje de la CTA principal del sitio: gradiente
+   esmeralda, halo, pulsacion y empuje al hover (mismo look que .btn-lead). */
+.btn:not(.ghost):not(.btn-ghost):not(.pill),.navbtn,.nav-access,.wa,.okc{background:linear-gradient(135deg,#25d99a,#12a774)!important;color:#03130c!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:100px!important;box-shadow:0 6px 20px -6px var(--green-glow),inset 0 1px 0 rgba(255,255,255,.28)!important;transition:transform .35s var(--ease-out),box-shadow .35s var(--ease-out)!important}
+.btn:not(.ghost):not(.btn-ghost):not(.pill):active,.navbtn:active,.nav-access:active,.wa:active,.okc:active{transform:scale(.97)!important}
+@media(hover:hover) and (pointer:fine){
+  .btn:not(.ghost):not(.btn-ghost):not(.pill):hover,.navbtn:hover,.nav-access:hover,.wa:hover,.okc:hover{transform:translateY(-2px)!important;background:linear-gradient(135deg,#2ee0a2,#14b47e)!important;box-shadow:0 16px 36px -8px var(--green-glow),inset 0 1px 0 rgba(255,255,255,.34)!important}
+}
 
 /* Botones fantasma / secundarios */
 .ghost,.btn-ghost{background:rgba(255,255,255,.04)!important;border-color:var(--line)!important;color:var(--ink)!important}
@@ -42,7 +51,7 @@ select option{background:#0e1512;color:var(--ink)}
 .hero *,.band *{border-color:var(--line)!important}
 
 /* Píldoras y chips */
-.pill-dark,.pill{background:rgba(30,158,94,.14)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.pill-dark,.pill{background:rgba(24,185,129,.14)!important;color:var(--ink)!important;border-color:var(--line)!important}
 
 /* Toasts / burbujas / tarjetas emergentes */
 .toast,.cbub,.legal{background:var(--white)!important;color:var(--ink)!important;border-color:var(--line)!important}

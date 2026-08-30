@@ -193,3 +193,13 @@ a:focus-visible,button:focus-visible,.access:focus-visible,.btn-lead:focus-visib
 .field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 /* Realimentación táctil al pulsar los CTA (empuje físico de 1px). */
 .btn-lead:active,.access:active{transform:translateY(1px)}
+
+/* Cartera: variación sutil por tarjeta (misma familia oscura + único acento
+   esmeralda) para dar ritmo visual mientras el equipo sube los renders reales
+   de cada proyecto. Honesto: no se inventan fotos de proyectos con nombre. */
+.pf-item:nth-child(2)::before{background:linear-gradient(205deg,#101d17,#080a0c)}
+.pf-item:nth-child(3)::before{background:linear-gradient(135deg,#0b1712,#090b0d)}
+.pf-item:nth-child(4)::before{background:linear-gradient(190deg,#0e1a16,#07090b)}
+.pf-item:nth-child(5)::before{background:linear-gradient(150deg,#12211b,#080a0c)}
+.pf-item::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 80% at 85% 0%,rgba(24,185,129,.10),transparent 55%);opacity:.65;transition:opacity .4s}
+.pf-item:hover::after{opacity:1}

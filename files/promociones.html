@@ -94,7 +94,7 @@
     <div class="promos-head reveal">
       <div class="eyebrow" style="margin-bottom:14px">Brava Real Estate · Obra nueva</div>
       <h1>Promociones <span class="em">off-plan</span> en Dubái</h1>
-      <p>Selección de proyectos de los mejores promotores —Binghatti, Emaar, Damac y más— con planes de pago, plusvalía en construcción y opción de co-inversión con Brava.</p>
+      <p>Selección de proyectos de los mejores promotores (Binghatti, Emaar, Damac y más) con planes de pago, plusvalía en construcción y opción de co-inversión con Brava.</p>
     </div>
     <div class="filters" id="filters"></div>
     <div id="grid"><div class="loading">Cargando promociones…</div></div>
@@ -193,7 +193,7 @@ function openPromo(p){
   var imgs=p.imagenes||[];
   var gal=imgs.length?'<div class="pmodal-gallery">'+imgs.map(function(im){return '<img src="'+esc(im.url)+'" alt="">';}).join('')+'</div>':'';
   var uns=p.unidades||[];
-  var utbl=uns.length?'<div class="sect-t">'+tx('Unidades')+'</div><table class="utable"><thead><tr><th>Tipo</th><th>'+tx('Dorm.')+'</th><th>m²</th><th class="n">'+tx('Precio')+'</th></tr></thead><tbody>'+uns.map(function(u){return '<tr><td>'+esc(u.tipo||'—')+'</td><td>'+esc(u.dorm||'—')+'</td><td>'+esc(u.sup||'—')+'</td><td class="n">'+(u.precio?money(u.precio,p.moneda):'—')+'</td></tr>';}).join('')+'</tbody></table>':'';
+  var utbl=uns.length?'<div class="sect-t">'+tx('Unidades')+'</div><table class="utable"><thead><tr><th>Tipo</th><th>'+tx('Dorm.')+'</th><th>m²</th><th class="n">'+tx('Precio')+'</th></tr></thead><tbody>'+uns.map(function(u){return '<tr><td>'+esc(u.tipo||'-')+'</td><td>'+esc(u.dorm||'-')+'</td><td>'+esc(u.sup||'-')+'</td><td class="n">'+(u.precio?money(u.precio,p.moneda):'-')+'</td></tr>';}).join('')+'</tbody></table>':'';
   document.getElementById('pmodalCard').innerHTML='<button class="pmodal-close" id="pmClose">✕</button>'+gal
     +'<div class="pmodal-body"><div class="promotor-line">'+developerLogo(p.promotorNombre)+'</div>'
     +'<h2>'+esc(content(p,'nombre'))+'</h2><div style="color:var(--muted);font-size:14px">'+esc(content(p,'ubicacion'))+'</div>'

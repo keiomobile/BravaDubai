@@ -5098,6 +5098,8 @@ var VIEWS={
 var current=null;
 function go(id){
   current=id;
+  /* recuerda la sección actual para no salir al inicio al recargar la página */
+  try{ sessionStorage.setItem('brava_crm_view', id); }catch(e){}
   (VIEWS[id]||viewDashboard)();
   $$('#nav a').forEach(function(a){ a.classList.toggle('on',a.getAttribute('data-view')===id); });
   if(window.innerWidth<=1050)closeSide();
@@ -5249,8 +5251,12 @@ function enterWithUser(u){
     apiFx();
     if(isInternalRole(role))refreshMsgBadge();
     var nav=NAV[role]||NAV.admin;
-    var first=nav.find(function(x){return x.id;}).id;
-    go(first);
+    var navItems=nav.filter(function(x){return x.id;});
+    var first=navItems[0].id;
+    /* al recargar, vuelve a la sección donde estabas (si sigue siendo válida para tu rol) */
+    var saved=null; try{ saved=sessionStorage.getItem('brava_crm_view'); }catch(e){}
+    var savedItem=saved?navItems.find(function(x){return x.id===saved;}):null;
+    if(saved && VIEWS[saved] && savedItem && navVisible(savedItem)) go(saved); else go(first);
   }
   if(BACKEND){
     apiBootstrap().then(function(data){ DB=data; buildSnapshot(); proceed(); }).catch(function(){ toast('Error cargando datos del servidor'); var btn=$('#loginBtn'); if(btn){btn.disabled=false;btn.textContent='Entrar';} });
@@ -5260,7 +5266,7 @@ function logout(){
   if(DEMO_PUBLIC){ location.href='/'; return; }
   if(BACKEND&&TOKEN){ fetch(API_BASE+'/logout',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN}}).catch(function(){}); }
   SESSION=null; TOKEN=null; BACKEND=false;
-  try{ sessionStorage.removeItem('brava_crm_token'); localStorage.removeItem('vlc_token'); }catch(e){}
+  try{ sessionStorage.removeItem('brava_crm_token'); sessionStorage.removeItem('brava_crm_view'); localStorage.removeItem('vlc_token'); }catch(e){}
   $('#app').classList.remove('show'); $('#login').classList.remove('hide'); updateHint();
 }
 $('#logout').onclick=logout; $('#logout2').onclick=logout;
@@ -5273,7 +5279,16 @@ $('#logout').onclick=logout; $('#logout2').onclick=logout;
 /* intentar restaurar sesión de backend; si no, esperar login */
 (function(){
   var t=null; try{ t=sessionStorage.getItem('brava_crm_token'); localStorage.removeItem('vlc_token'); }catch(e){}
-  if(t){ TOKEN=t; BACKEND=true; apiMe().then(function(r){ enterWithUser(r.user); }).catch(function(){ TOKEN=null; BACKEND=false; try{ sessionStorage.removeItem('brava_crm_token'); }catch(e){} }); }
+  if(!t) return;
+  TOKEN=t; BACKEND=true;
+  /* Restaura la sesión. Solo se cierra si el token es realmente inválido (401);
+     ante un fallo de red transitorio NO se borra el token, para no expulsar al
+     usuario a la pantalla de login por un corte momentáneo (al recargar reintenta). */
+  fetch(API_BASE+'/me',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){
+    if(r.status===401||r.status===403){ TOKEN=null; BACKEND=false; try{ sessionStorage.removeItem('brava_crm_token'); sessionStorage.removeItem('brava_crm_view'); }catch(e){} return; }
+    if(!r.ok){ TOKEN=null; BACKEND=false; return; } /* conserva el token en sessionStorage: al recargar reintenta */
+    return r.json().then(function(j){ if(j&&j.user)enterWithUser(j.user); else { TOKEN=null; BACKEND=false; } });
+  }).catch(function(){ TOKEN=null; BACKEND=false; /* red caída: token conservado para el próximo intento */ });
 })();
 
 /* atajo: reseed con Alt+R (solo modo local) */

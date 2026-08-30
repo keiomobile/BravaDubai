@@ -69,7 +69,7 @@ header.scrolled{background:rgba(6,7,10,.72);backdrop-filter:blur(16px);border-bo
 .hero-meta .m b{font-family:var(--serif);font-size:clamp(30px,3.6vw,50px);font-weight:500;display:block;line-height:1}
 .hero-meta .m span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-top:10px;display:block}
 
-/* Developers — logotipos originales, normalizados sin deformarlos */
+/* Developers - logotipos originales, normalizados sin deformarlos */
 .marq{border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);padding:22px 0;overflow:hidden;white-space:nowrap;position:relative;z-index:2}
 .marq::before,.marq::after{content:"";position:absolute;z-index:2;top:0;bottom:0;width:min(12vw,150px);pointer-events:none}
 .marq::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
@@ -94,7 +94,7 @@ header.scrolled{background:rgba(6,7,10,.72);backdrop-filter:blur(16px);border-bo
 .sec-head h2{font-family:var(--serif);font-weight:400;font-size:clamp(30px,4.6vw,60px);line-height:1.02;letter-spacing:-.02em;max-width:16ch}
 .sec-head p{max-width:40ch;color:var(--muted);font-size:15px;line-height:1.7}
 
-/* Verticals — editorial rows */
+/* Verticals - editorial rows */
 .rows{border-top:1px solid var(--line)}
 .row{display:grid;grid-template-columns:70px 1fr auto;gap:30px;align-items:center;padding:40px 6px;border-bottom:1px solid var(--line);transition:.4s;cursor:pointer}
 .row:hover{padding-left:24px;background:linear-gradient(90deg,rgba(24,185,129,.05),transparent 60%)}
@@ -186,3 +186,10 @@ select option{background:#0c0f14;color:var(--ink)}
 .split2 .box h3{font-family:var(--serif);font-weight:400;font-size:clamp(24px,3vw,36px);letter-spacing:-.01em;max-width:16ch}
 .split2 .box p{color:var(--muted);font-size:14.5px;margin:14px 0 24px;max-width:34ch;line-height:1.6}
 @media(max-width:820px){.form-grid,.split2{grid-template-columns:1fr;gap:40px}}
+
+/* Accesibilidad: anillo de foco visible solo con teclado (no afecta al clic con ratón).
+   Antes solo los campos de formulario tenían estado de foco; los enlaces y CTA no. */
+a:focus-visible,button:focus-visible,.access:focus-visible,.btn-lead:focus-visible,.link-arrow:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:8px}
+.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+/* Realimentación táctil al pulsar los CTA (empuje físico de 1px). */
+.btn-lead:active,.access:active{transform:translateY(1px)}

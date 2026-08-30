@@ -151,18 +151,8 @@ header.scrolled{background:rgba(6,7,10,.72);backdrop-filter:blur(16px);border-bo
 .pf-item .loc{color:var(--muted);font-size:13px}
 .pf-item .meta{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:12px;letter-spacing:.04em;color:var(--ink-dim)}
 .pf-item:hover{transform:translateY(-6px);border-color:rgba(24,185,129,.4)}
-/* Cartera en movil: carrusel horizontal con scroll-snap en lugar de una
-   columna infinita. Las tarjetas sangran a pantalla completa y encajan de
-   una en una. Pista visual "Desliza" para que se entienda el gesto. */
 .pf-hint{display:none}
-@media(max-width:820px){
-  .pf{display:flex;gap:16px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-padding-left:var(--pad);-webkit-overflow-scrolling:touch;margin:0 calc(var(--pad)*-1);padding:4px var(--pad) 22px;scrollbar-width:none}
-  .pf::-webkit-scrollbar{display:none}
-  .pf-item,.pf-item.big{flex:0 0 82%;grid-column:auto;scroll-snap-align:start;min-height:300px}
-  .pf-hint{display:flex;align-items:center;gap:9px;margin-top:2px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
-  .pf-hint::before{content:"";width:22px;height:1px;background:var(--green)}
-}
-@media(prefers-reduced-motion:reduce){.pf{scroll-behavior:auto}}
+@media(max-width:820px){.pf-item,.pf-item.big{grid-column:span 12}}
 
 /* Manifesto */
 .manifesto{text-align:center;padding:clamp(100px,18vh,200px) 0}

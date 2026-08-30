@@ -5,13 +5,30 @@
 <meta name="theme-color" content="#07090c"><meta name="robots" content="index,follow">
 <link rel="canonical" href="https://bravaae.com/propiedades"><link rel="icon" href="/brand/brava-favicon.png">
 <link rel="preconnect" href="https://api.fontshare.com" crossorigin><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700,800&f[]=zodiak@400,500,700&display=swap">
-<link rel="stylesheet" href="/real-estate.css"></head><body>
-<header class="re-header"><div class="re-wrap re-nav">
-  <a class="re-logo" href="/brava-real-estate"><img src="/brand/brava-realestate-white.png" alt="Brava Real Estate"></a>
-  <nav class="re-links"><a href="/brava-real-estate">Real Estate</a><a class="on" href="/propiedades">Propiedades</a><a href="/promociones">Promociones</a><a href="/portal.html?b=realestate">Portal</a>
-    <div class="re-lang" id="lang" data-noi18n><button data-lang="es">ES</button><button data-lang="en">EN</button><button data-lang="ar">ع</button></div>
-    <a class="re-cta" href="/portal.html?reg=1&b=realestate">Publicar propiedad</a></nav>
-</div></header>
+<link rel="stylesheet" href="/real-estate.css"><link rel="stylesheet" href="/brava.css"></head><body>
+<div class="amb"><i class="g1"></i><i class="g2"></i></div>
+<header id="header">
+  <div class="re-wrap nav">
+    <a href="/" class="brand"><img src="/brand/brava-realestate-white.png" alt="Brava Real Estate"></a>
+    <nav class="nav-mid">
+      <a href="/#casa">La casa</a>
+      <a href="/brava-real-estate">Real Estate</a>
+      <a href="/propiedades" class="on">Propiedades</a>
+      <a href="/promociones">Promociones</a>
+      <a href="/brava-rent">Brava Rent</a>
+      <a href="/simulador-fiscal">Simulador fiscal</a>
+    </nav>
+    <div class="nav-r">
+      <div class="lang" id="lang" data-noi18n><button data-lang="es" class="on">ES</button><span class="sep">·</span><button data-lang="en">EN</button><span class="sep">·</span><button data-lang="ar">ع</button></div>
+      <a href="/portal.html?reg=1&b=realestate" class="access">Publicar propiedad</a>
+      <button class="burger" id="burger" aria-label="Menú"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="nav-mobile" id="navMobile">
+  <button class="close" id="navClose">✕</button>
+  <a href="/#casa">La casa</a><a href="/brava-real-estate">Real Estate</a><a href="/propiedades" class="on">Propiedades</a><a href="/promociones">Promociones</a><a href="/brava-rent">Brava Rent</a><a href="/simulador-fiscal">Simulador fiscal</a><a href="/portal.html?reg=1&b=realestate" class="cta">Publicar propiedad</a>
+</nav>
 <main>
 <section class="re-hero"><div class="re-wrap"><div class="re-kicker">Brava Real Estate · UAE</div><h1>Encuentra tu próxima propiedad</h1><p>Pisos, casas y activos de inversión seleccionados en Dubái y Emiratos Árabes Unidos.</p>
   <div class="re-search"><select id="fOper"><option value="">Comprar o alquilar</option><option value="Venta">Comprar</option><option value="Alquiler larga duración">Alquilar</option></select><select id="fTipo"><option value="">Tipo de inmueble</option></select><input id="fMuni" placeholder="Municipio o zona"><input id="fMax" type="number" min="0" placeholder="Precio máximo"><button class="re-btn" id="fBtn">Buscar →</button></div>
@@ -19,7 +36,15 @@
 <section class="re-wrap"><div class="re-toolbar"><span id="count">Cargando propiedades…</span><select id="fSort"><option value="recientes">Más recientes</option><option value="precio_asc">Precio: menor a mayor</option><option value="precio_desc">Precio: mayor a menor</option></select></div><div class="re-grid" id="grid"></div><div style="text-align:center;margin:-24px 0 60px"><button class="re-btn secondary" id="more" style="display:none">Ver más</button></div></section>
 <section class="re-wrap re-contact" id="contacto"><div><div class="re-kicker">Acceso privado</div><h2>¿No encuentras lo que buscas?</h2><p>Cuéntanos tu criterio. Muchas oportunidades se comparten de forma privada antes de llegar al mercado.</p></div><form class="re-form" id="reInfoForm"><input class="full" id="reiNombre" placeholder="Nombre" required><input id="reiTel" placeholder="Teléfono" required inputmode="tel"><input id="reiEmail" placeholder="Email" type="email"><textarea class="full" id="reiMsg" placeholder="¿Qué buscas? Zona, habitaciones, presupuesto, venta o alquiler…"></textarea><button class="re-btn full" type="submit">Avisadme cuando haya algo →</button><div class="full" id="formMsg" aria-live="polite" style="font-size:12px;color:var(--re-muted)"></div></form></section>
 </main>
-<footer class="re-footer"><div class="re-wrap re-footer-row"><span>© 2026 BRAVA Global Holding Limited · Dubai, UAE</span><div class="re-footer-links"><a href="/privacidad">Privacidad</a><a href="/aviso-legal">Aviso legal</a><a href="/crm.html">Acceso equipo</a></div></div></footer>
+<footer><div class="re-wrap"><div class="foot-b" style="border-top:1px solid var(--line);padding-top:26px"><span>© 2026 BRAVA Global Holding Limited · Dubai, UAE</span><span class="foot-links"><a href="/privacidad">Privacidad</a><a href="/aviso-legal">Aviso legal</a><a href="/crm.html">Acceso equipo</a></span></div></div></footer>
+<script>
+var _h=document.getElementById('header');addEventListener('scroll',function(){_h.classList.toggle('scrolled',scrollY>30)});
+var _burger=document.getElementById('burger'),_nav=document.getElementById('navMobile');
+function _navSet(o){_nav.classList.toggle('open',o);_burger.classList.toggle('x',o);document.body.style.overflow=o?'hidden':'';}
+_burger.onclick=function(){_navSet(!_nav.classList.contains('open'));};
+document.getElementById('navClose').onclick=function(){_navSet(false);};
+document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function(){_navSet(false);};});
+</script>
 <script src="/i18n-dict.js"></script><script src="/i18n.js"></script>
 <script>(function(){'use strict';
 var $=function(s){return document.querySelector(s)},TIPOS=['Apartamento','Ático','Dúplex','Casa','Villa','Adosado','Parcela','Local comercial','Oficina','Hotel','Otro'];

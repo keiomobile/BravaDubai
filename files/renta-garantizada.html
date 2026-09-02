@@ -596,7 +596,8 @@
     fetch('/api/lead-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       marca:'garentto', nombre:nombre, telefono:tel, direccion:($('#riMuni').value||'').trim(),
       mensaje:($('#riMsg').value||'').trim(), origen:'Web '+NOMBRE+' · Info'
-    })}).then(function(){ var w=$('#rgInfoWrap'); if(w)w.style.display='none'; var ok=$('#rgInfoOk'); if(ok)ok.style.display='block'; })
+    })}).then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok||!j.ok)throw new Error(j.error||'No se pudo enviar');return j;});})
+    .then(function(){ var w=$('#rgInfoWrap'); if(w)w.style.display='none'; var ok=$('#rgInfoOk'); if(ok)ok.style.display='block'; })
     .catch(function(){ if(btn){ btn.disabled=false; btn.textContent='Quiero información'; } });
   }); }
 

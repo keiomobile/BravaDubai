@@ -146,7 +146,17 @@
   <div class="wrap inner reveal">
     <div class="status"><span class="dot"></span><span data-i18n="cta_status">Acceso privado · Solicitudes abiertas</span></div>
     <h2 data-i18n="cta_h">El acceso empieza<br>con una conversación.</h2>
-    <div style="margin-top:38px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap"><a href="mailto:business@bravaae.com?subject=Solicitud%20de%20acceso%20a%20BRAVA" class="btn-lead" data-i18n="cta_btn">Solicitar acceso al club <span>→</span></a><a href="https://wa.me/34622220591?text=Hola%2C%20quiero%20solicitar%20acceso%20a%20BRAVA" class="link-arrow" target="_blank" rel="noopener">Hablar por WhatsApp</a></div>
+    <form id="clubLeadForm" style="max-width:720px;margin:38px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left">
+      <input name="nombre" required placeholder="Nombre completo" autocomplete="name" style="width:100%;padding:15px 16px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font:inherit">
+      <input name="email" type="email" required placeholder="Correo electrónico" autocomplete="email" style="width:100%;padding:15px 16px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font:inherit">
+      <input name="telefono" required placeholder="WhatsApp con prefijo" autocomplete="tel" style="width:100%;padding:15px 16px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font:inherit">
+      <select name="interes" style="width:100%;padding:15px 16px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:#111;color:#fff;font:inherit"><option value="Inversión">Inversión</option><option value="Real Estate">Real Estate</option><option value="Gestión patrimonial">Gestión patrimonial</option></select>
+      <textarea name="mensaje" placeholder="¿Qué tipo de oportunidad buscas?" style="grid-column:1/-1;width:100%;min-height:90px;padding:15px 16px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font:inherit;resize:vertical"></textarea>
+      <label style="grid-column:1/-1;display:flex;gap:9px;align-items:flex-start;font-size:12px;color:rgba(255,255,255,.72)"><input name="consent" type="checkbox" required style="margin-top:3px">Acepto la <a href="/privacidad.html" style="color:#fff;text-decoration:underline">política de privacidad</a> y el tratamiento de mis datos.</label>
+      <div style="grid-column:1/-1;display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap"><button type="submit" class="btn-lead">Solicitar acceso al club <span>→</span></button><a href="https://wa.me/34622220591?text=Hola%2C%20quiero%20solicitar%20acceso%20a%20BRAVA" class="link-arrow" target="_blank" rel="noopener">Hablar por WhatsApp</a></div>
+      <div id="clubLeadMsg" role="status" style="grid-column:1/-1;text-align:center;min-height:24px;font-size:14px;color:#fff"></div>
+    </form>
+    <style>@media(max-width:640px){#clubLeadForm{grid-template-columns:1fr!important}#clubLeadForm>*{grid-column:1!important}}</style>
   </div>
 </section>
 
@@ -180,6 +190,21 @@ document.querySelectorAll('#navMobile a').forEach(function(a){a.onclick=function
 /* Scroll reveal */
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.15});
 document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+/* Captación privada: registra la solicitud en el CRM antes de confirmar. */
+var clubForm=document.getElementById('clubLeadForm');
+if(clubForm)clubForm.addEventListener('submit',function(e){
+  e.preventDefault();
+  var btn=clubForm.querySelector('button'),msg=document.getElementById('clubLeadMsg'),fd=new FormData(clubForm);
+  btn.disabled=true;btn.textContent='Enviando…';msg.textContent='';
+  fetch('/api/lead-web',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    marca:'capital',nombre:fd.get('nombre')||'',email:fd.get('email')||'',telefono:fd.get('telefono')||'',
+    mensaje:'Interés: '+(fd.get('interes')||'Inversión')+(fd.get('mensaje')?' · '+fd.get('mensaje'):''),
+    origen:'Web · Solicitud acceso Club Brava'
+  })}).then(function(r){return r.json().catch(function(){return{}}).then(function(j){if(!r.ok||!j.ok)throw new Error(j.error||'No se pudo enviar');return j;});})
+    .then(function(){clubForm.reset();msg.textContent='✓ Solicitud recibida. El equipo de Brava revisará tu perfil.';})
+    .catch(function(err){msg.textContent=err.message||'No se pudo enviar. Inténtalo de nuevo.';})
+    .finally(function(){btn.disabled=false;btn.innerHTML='Solicitar acceso al club <span>→</span>';});
+});
 /* Language switch (placeholder wiring: highlights + persists; full dictionaries next) */
 </script>
 <script src="/i18n-dict.js"></script>

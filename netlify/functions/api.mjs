@@ -1298,6 +1298,10 @@ export default async (req) => {
     /* LEAD PÚBLICO (web) — se etiqueta con la marca de la web de origen (capital · realestate · garentto) */
     if (path === "lead-web" && method === "POST") {
       const body = await req.json();
+      const leadNombre = String(body.nombre || body.name || "").trim();
+      const leadTel = String(body.telefono || body.tel || "").trim();
+      const leadEmail = String(body.email || "").trim();
+      if (!leadNombre || (!leadTel && !leadEmail)) return json({ error: "Indica tu nombre y una forma de contacto" }, 400);
       /* Límite antiabuso por IP: máx 20 contactos/día */
       const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-nf-client-connection-ip") || "";
       if (ip) { try { const [c] = await db.sql`SELECT COUNT(*)::int AS n FROM leads WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '1 day'`; if (c && c.n >= 20) return json({ error: "Has enviado demasiadas solicitudes. Inténtalo más tarde." }, 429); } catch (e) {} }
@@ -1489,13 +1493,27 @@ export default async (req) => {
     /* SOLICITUD DE COLABORADOR PÚBLICA (web) — entra como colaborador "Pendiente" */
     if (path === "collab-apply" && method === "POST") {
       const body = await req.json();
+      const cap = (s, n) => String(s || "").trim().slice(0, n);
+      const email = cap(body.email, 160).toLowerCase();
+      const tel = cap(body.telefono || body.tel, 40);
+      const nombre = cap(body.nombre || body.name, 120);
+      if (!nombre || (!email && !tel)) return json({ error: "Indica tu nombre y una forma de contacto" }, 400);
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "Introduce un correo válido" }, 400);
+      if (email) {
+        const [recent] = await db.sql`SELECT COUNT(*)::int AS n FROM colaboradores WHERE LOWER(email) = ${email} AND created_at > NOW() - INTERVAL '1 day'`;
+        if (recent && recent.n >= 3) return json({ ok: true });
+      }
       const id = uid("co");
       const co = {
-        id, nombre: body.nombre||body.name||"", tel: body.telefono||body.tel||"", email: body.email||"",
-        perfil: body.perfil||"", zona: body.zona||"", aportados: 0, cerrados: 0, comision: 0,
-        estadoCol: "Pendiente", notas: body.mensaje||body.notas||"",
+        id, nombre, tel, email,
+        perfil: cap(body.perfil,120), zona: cap(body.zona,160), aportados: 0, cerrados: 0, comision: 0,
+        estadoCol: "Pendiente", notas: cap(body.mensaje||body.notas,2000),
       };
       await upsertCo(co);
+      try {
+        const admins = await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','superadmin') AND activo = TRUE`;
+        for (const a of admins) await notify(a.id, "colaborador", "Nueva solicitud de colaborador", nombre + (tel ? " · " + tel : (email ? " · " + email : "")), null);
+      } catch (e) {}
       if (co.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(co.email)) {
         await sendEmail(co.email, "Solicitud de colaboración recibida · BRAVA", emailWrap("Gracias por contactar con BRAVA", "Hola " + safeText(co.nombre || "") + ",<br><br>Hemos recibido tu solicitud para colaborar con nuestro grupo. El equipo revisará tu perfil y se pondrá en contacto contigo.<br><br><b>Referencia:</b> " + safeText(id), "Conocer BRAVA", "https://bravaae.com/colaboradores"));
       }
@@ -1506,6 +1524,12 @@ export default async (req) => {
        inmueble desde un enlace y sube fotos. Entra como lead con las fotos adjuntas. */
     if (path === "property-intake" && method === "POST") {
       const body = await req.json();
+      const nombrePublico = String(body.nombre || body.name || "").trim();
+      const telPublico = String(body.telefono || body.tel || "").trim();
+      const emailPublico = String(body.email || "").trim();
+      if (!nombrePublico || (!telPublico && !emailPublico)) return json({ error: "Indica tu nombre y una forma de contacto" }, 400);
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-nf-client-connection-ip") || "";
+      if (ip) { try { const [c] = await db.sql`SELECT COUNT(*)::int AS n FROM leads WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '1 day'`; if (c && c.n >= 10) return json({ error: "Has enviado demasiadas solicitudes. Inténtalo más tarde." }, 429); } catch (e) {} }
       const id = uid("ld");
       const objetivo = (body.objetivo || "").trim();
       const email = (body.email || "").trim();
@@ -1524,8 +1548,12 @@ export default async (req) => {
       if (body.precio) notasLines.push("Precio/renta que pide: " + String(body.precio));
       const coment = (body.comentarios || body.notas || "").trim();
       if (coment) { notasLines.push(""); notasLines.push(coment); }
+      const marca = ["capital","realestate","garentto"].indexOf(body.marca) > -1 ? body.marca : "realestate";
       const lead = {
         id,
+        marca,
+        email,
+        ip,
         nombre: body.nombre || body.name || "",
         tel: body.telefono || body.tel || "",
         situacion: body.situacion || objetivo || "",
@@ -1563,6 +1591,11 @@ export default async (req) => {
       if (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         await sendEmail(email, "Ficha de propiedad recibida · BRAVA", emailWrap("Tu propiedad ya está en revisión", "Hola " + safeText(lead.nombre || "") + ",<br><br>Hemos recibido los datos de tu inmueble" + (n ? " y " + n + " archivo" + (n === 1 ? "" : "s") : "") + ". Nuestro equipo revisará la información antes de continuar contigo.<br><br><b>Referencia:</b> " + safeText(id), "Ver Brava Real Estate", "https://bravaae.com/brava-real-estate"));
       }
+      try {
+        const etiqueta = marca === "garentto" ? "Brava Rent" : (marca === "capital" ? "Brava Dubai" : "Brava Real Estate");
+        const admins = await db.sql`SELECT id FROM usuarios WHERE role IN ('admin','superadmin') AND activo = TRUE`;
+        for (const a of admins) await notify(a.id, "propiedad", "Nueva propiedad recibida · " + etiqueta, (lead.nombre || "Propietario") + (lead.tel ? " · " + lead.tel : "") + (lead.direccion ? " · " + lead.direccion : ""), null);
+      } catch (e) {}
       return json({ ok: true, id, fotos: n });
     }
 
